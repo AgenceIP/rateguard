@@ -10,7 +10,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { t } from "@/i18n";
+import { useT } from "@/i18n";
 import { formaterCADSigne, formaterPourcentageSigne } from "@/lib/format";
 import type { Scenario } from "@/lib/types";
 
@@ -23,6 +23,8 @@ const DEFAVORABLE = "var(--statut-rouge)";
  * décoration, c'est la garantie qu'aucune lecture directionnelle n'est suggérée.
  */
 export function GraphiqueScenarios({ scenarios }: { scenarios: Scenario[] }) {
+  const t = useT();
+
   return (
     <div className="mt-8">
       <ResponsiveContainer width="100%" height={280}>

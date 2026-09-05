@@ -5,52 +5,73 @@ import type { Devise } from "./types";
  * Les fonctions de calcul travaillent en pleine précision (voir calculs.ts).
  */
 
-const LOCALE = "fr-CA";
+export type Langue = "fr" | "en";
 
-const montantCAD = new Intl.NumberFormat(LOCALE, {
-  style: "currency",
-  currency: "CAD",
-  maximumFractionDigits: 0,
-});
+const LOCALES: Record<Langue, string> = { fr: "fr-CA", en: "en-CA" };
 
-const montantCADPrecis = new Intl.NumberFormat(LOCALE, {
-  style: "currency",
-  currency: "CAD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+function construire(locale: string) {
+  return {
+    locale,
+    // « 10,7 % » en français, « 10.7% » en anglais : l'espace fait partie de
+    // la typographie française, pas de la valeur.
+    espaceAvantPourcent: locale.startsWith("fr") ? "\u00a0" : "",
+    cad: new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "CAD",
+      maximumFractionDigits: 0,
+    }),
+    cadPrecis: new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "CAD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+    entier: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
+    taux: new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    }),
+    dateLongue: new Intl.DateTimeFormat(locale, { dateStyle: "long" }),
+    dateHeure: new Intl.DateTimeFormat(locale, {
+      dateStyle: "long",
+      timeStyle: "short",
+    }),
+  };
+}
 
-const dateLongue = new Intl.DateTimeFormat(LOCALE, {
-  dateStyle: "long",
-});
+let f = construire(LOCALES.fr);
 
-const dateHeure = new Intl.DateTimeFormat(LOCALE, {
-  dateStyle: "long",
-  timeStyle: "short",
-});
+/**
+ * Appelée pendant le rendu par le fournisseur de langue, avant que les enfants
+ * ne formatent quoi que ce soit. Un seul état de langue existe à la fois côté
+ * navigateur ; le serveur, lui, ne rend aucun nombre localisé (les pages qui en
+ * affichent lisent le localStorage et n'ont donc pas de contenu au SSR).
+ */
+export function definirLangueFormat(langue: Langue): void {
+  if (f.locale === LOCALES[langue]) return;
+  f = construire(LOCALES[langue]);
+}
 
 export function formaterCAD(valeur: number, precis = false): string {
-  return (precis ? montantCADPrecis : montantCAD).format(valeur);
+  return (precis ? f.cadPrecis : f.cad).format(valeur);
 }
 
 export function formaterDevise(valeur: number, devise: Devise): string {
   if (devise === "CAD") return formaterCAD(valeur);
-  return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(valeur)} ${devise}`;
+  return `${f.entier.format(valeur)} ${devise}`;
 }
 
 /** Un taux de change se lit à 4 décimales, pas 2. */
 export function formaterTaux(valeur: number): string {
-  return new Intl.NumberFormat(LOCALE, {
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4,
-  }).format(valeur);
+  return f.taux.format(valeur);
 }
 
 export function formaterPourcentage(valeur: number, decimales = 1): string {
-  return `${new Intl.NumberFormat(LOCALE, {
+  const nombre = new Intl.NumberFormat(f.locale, {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
-  }).format(valeur)} %`;
+  }).format(valeur);
+  return `${nombre}${f.espaceAvantPourcent}%`;
 }
 
 /** Pourcentage signé — le signe porte du sens dans les scénarios. */
@@ -65,11 +86,11 @@ export function formaterCADSigne(valeur: number): string {
 }
 
 export function formaterDate(iso: string): string {
-  return dateLongue.format(new Date(`${iso}T12:00:00`));
+  return f.dateLongue.format(new Date(`${iso}T12:00:00`));
 }
 
 export function formaterHorodatage(ms: number): string {
-  return dateHeure.format(new Date(ms));
+  return f.dateHeure.format(new Date(ms));
 }
 
 /** Date du jour au format yyyy-mm-dd, pour les valeurs par défaut du formulaire. */

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Fraunces, Karla } from "next/font/google";
-import Link from "next/link";
 
-import { t } from "@/i18n";
+import { EnTete, PiedDePage } from "@/components/chrome";
+import { FournisseurLangue } from "@/i18n";
+// Les métadonnées sont produites sur le serveur, hors de React : elles lisent
+// le français directement plutôt que la langue active du navigateur.
+import { fr } from "@/i18n/fr";
 import "./globals.css";
 
 // Fraunces porte les titres : une antique douce, avec ses axes SOFT et WONK
@@ -20,8 +23,8 @@ const karla = Karla({
 });
 
 export const metadata: Metadata = {
-  title: `${t.app.nom} — risque de change pour agences Omra et Hajj`,
-  description: t.app.description,
+  title: `${fr.app.nom} — risque de change pour agences Omra et Hajj`,
+  description: fr.app.description,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,38 +34,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${karla.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <header className="border-b border-border">
-          <div className="mx-auto flex w-full max-w-6xl items-baseline gap-8 px-6 py-5">
-            <Link
-              href="/"
-              className="font-heading text-lg font-semibold tracking-tight"
-            >
-              {t.app.nom}
-            </Link>
-            <nav className="flex items-baseline gap-6 text-sm">
-              <Link
-                href="/"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {t.nav.forfaits}
-              </Link>
-              <Link
-                href="/conformite"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {t.nav.conformite}
-              </Link>
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-1">{children}</main>
-
-        <footer className="mt-20 border-t border-border">
-          <p className="mx-auto w-full max-w-6xl px-6 py-6 text-sm leading-relaxed text-muted-foreground">
-            {t.detail.avertissementGeneral}
-          </p>
-        </footer>
+        <FournisseurLangue>
+          <EnTete />
+          <main className="flex-1">{children}</main>
+          <PiedDePage />
+        </FournisseurLangue>
       </body>
     </html>
   );

@@ -1,10 +1,6 @@
-import type { Metadata } from "next";
+"use client";
 
-import { t } from "@/i18n";
-
-export const metadata: Metadata = {
-  title: `${t.conformite.titre} — ${t.app.nom}`,
-};
+import { useT } from "@/i18n";
 
 function Paragraphes({ textes }: { textes: readonly string[] }) {
   return (
@@ -19,6 +15,8 @@ function Paragraphes({ textes }: { textes: readonly string[] }) {
 }
 
 export default function ConformitePage() {
+  const t = useT();
+
   return (
     <article className="mx-auto w-full max-w-3xl px-6 py-14">
       <h1 className="font-heading text-4xl font-semibold leading-tight">

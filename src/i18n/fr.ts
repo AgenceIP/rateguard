@@ -1,7 +1,7 @@
 /**
  * Tout le texte de l'interface vit ici, jamais dans le JSX.
- * Ajouter l'anglais plus tard = créer en.ts avec la même forme et changer la
- * langue active dans index.ts. Aucun composant n'a besoin d'être touché.
+ * Le français est la forme de référence : en.ts doit satisfaire le type
+ * Traductions dérivé de ce fichier. Toute clé ajoutée ici doit l'être là.
  */
 export const fr = {
   app: {
@@ -14,6 +14,12 @@ export const fr = {
     forfaits: "Forfaits",
     conformite: "Conformité",
     nouveau: "Nouveau forfait",
+  },
+
+  langue: {
+    choisir: "Langue de l'interface",
+    fr: "Français",
+    en: "English",
   },
 
   commun: {
@@ -51,6 +57,8 @@ export const fr = {
       jaune: "À surveiller",
       rouge: "Marge dépassée",
     },
+    progression: (parcouru: string, seuil: string) =>
+      `${parcouru} sur ${seuil}`,
     statutExplication: {
       vert: "Le taux actuel est favorable ou reste loin de votre seuil.",
       jaune: "Le taux actuel a parcouru plus de la moitié du chemin vers votre seuil.",
@@ -110,6 +118,8 @@ export const fr = {
 
   detail: {
     pelerins: (n: number) => `${n} pèlerin${n > 1 ? "s" : ""}`,
+    sousTitre: (pelerins: string, montant: string, devise: string) =>
+      `${pelerins}, ${montant} encaissés, payables en ${devise}`,
     introuvable: {
       titre: "Ce forfait est introuvable",
       corps:
@@ -123,6 +133,8 @@ export const fr = {
       capteLe: "Capté le",
       taux: "Taux du marché",
       source: "Source",
+      sourceValeur: (fournisseur: string, date: string) =>
+        `${fournisseur} — taux de référence de la BCE, ${date}`,
       peg:
         "La Banque centrale européenne, source de ce taux, ne publie pas le riyal saoudien. Le taux affiché est le CAD/USD converti au peg saoudien fixe de 3,75 SAR pour 1 USD. Votre exposition réelle est donc au dollar américain.",
       usage:
@@ -140,6 +152,14 @@ export const fr = {
       tauxEffectif: "Votre taux réel après frais",
       colonneFrais: "Poste",
       colonneMontant: "Coût estimé",
+      // Indexés par la clé produite par calculerCoutReel : la fonction de
+      // calcul reste pure et sans langue.
+      postes: {
+        transfert: "Frais de virement international",
+        intermediaire: "Frais de banque intermédiaire",
+        reception: "Frais de réception du bénéficiaire",
+        spread: "Marge de change intégrée au taux",
+      },
     },
 
     scenarios: {
@@ -283,4 +303,4 @@ export const fr = {
     disclaimer:
       "Cette page est un contenu informatif. Elle n'est ni un avis religieux, ni un conseil financier, ni un avis juridique. Les normes citées le sont à titre de référence pour vous permettre de poursuivre la discussion avec les personnes qualifiées de votre choix.",
   },
-} as const;
+};

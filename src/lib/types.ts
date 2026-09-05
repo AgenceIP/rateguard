@@ -53,8 +53,7 @@ export interface Forfait {
 // --- Sorties des fonctions de calcul pures -------------------------------
 
 export interface LigneFrais {
-  cle: string;
-  libelle: string;
+  cle: "transfert" | "intermediaire" | "reception" | "spread";
   montantCAD: number;
   mode: "pourcentage" | "fixe";
   /** 2.5 pour 2,5 %, ou 45 pour 45 $. */

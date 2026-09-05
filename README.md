@@ -10,6 +10,8 @@ différents scénarios.
 
 **Essayer : https://rateguard-eight.vercel.app**
 
+Interface bilingue français / anglais, bascule dans l’en-tête.
+
 Projet réalisé pour **MuslimHacks 2026**, défi *International Trades*.
 
 ## Ce que l'outil ne fait pas
@@ -46,7 +48,8 @@ npm run build
 ```
 
 `src/lib/calculs.ts` ne dépend ni de React, ni du réseau, ni du navigateur : toute la logique
-financière est testable sans aucun mock.
+financière est testable sans aucun mock. Le texte visible vit dans `src/i18n/` : `fr.ts` est
+la forme de référence et `en.ts` doit la satisfaire, donc une traduction oubliée ne compile pas.
 
 ## Pile
 

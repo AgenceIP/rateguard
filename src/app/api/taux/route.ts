@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     const taux = viaPegUsd ? tauxUsd * PEG_SAR_PAR_USD : tauxDirect;
 
     const sourceTaux: SourceTaux = {
-      fournisseur: "Frankfurter (taux de référence BCE)",
+      fournisseur: "Frankfurter",
       paire: `CAD/${cible}`,
       dateTaux: donnees.date,
       horodatageRecuperation: Date.now(),

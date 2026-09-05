@@ -95,21 +95,18 @@ export function calculerCoutReel(
   const fraisFixes: LigneFrais[] = [
     {
       cle: "transfert",
-      libelle: "Frais de virement international",
       montantCAD: benchmark.fraisTransfertFixeCAD,
       mode: "fixe",
       valeur: benchmark.fraisTransfertFixeCAD,
     },
     {
       cle: "intermediaire",
-      libelle: "Frais de banque intermédiaire",
       montantCAD: benchmark.fraisBanqueIntermediaireCAD,
       mode: "fixe",
       valeur: benchmark.fraisBanqueIntermediaireCAD,
     },
     {
       cle: "reception",
-      libelle: "Frais de réception du bénéficiaire",
       montantCAD: benchmark.fraisReceptionCAD,
       mode: "fixe",
       valeur: benchmark.fraisReceptionCAD,
@@ -132,7 +129,6 @@ export function calculerCoutReel(
     ...fraisFixes,
     {
       cle: "spread",
-      libelle: "Marge de change intégrée au taux",
       montantCAD: coutSpreadCAD,
       mode: "pourcentage",
       valeur: benchmark.spreadBancairePct,

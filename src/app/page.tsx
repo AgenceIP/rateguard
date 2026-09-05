@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { t } from "@/i18n";
+import { useT } from "@/i18n";
 import {
   calculerSeuilCritique,
   calculerStatut,
@@ -34,6 +34,7 @@ const TEXTE_STATUT: Record<StatutForfait, string> = {
 };
 
 export default function ListeForfaitsPage() {
+  const t = useT();
   const [forfaits, setForfaits] = useState<Forfait[] | null>(null);
   const [tauxActuels, setTauxActuels] = useState<
     Partial<Record<DeviseCible, number>>
@@ -155,11 +156,11 @@ export default function ListeForfaitsPage() {
                     {mouvementPct !== null &&
                       seuil.mouvementDefavorablePct !== null && (
                         <p className="chiffres mt-1 text-sm text-muted-foreground">
-                          {formaterPourcentage(
-                            Math.max(0, -mouvementPct),
-                          )}{" "}
-                          sur {formaterPourcentage(
-                            seuil.mouvementDefavorablePct,
+                          {t.accueil.progression(
+                            formaterPourcentage(Math.max(0, -mouvementPct)),
+                            formaterPourcentage(
+                              seuil.mouvementDefavorablePct,
+                            ),
                           )}
                         </p>
                       )}

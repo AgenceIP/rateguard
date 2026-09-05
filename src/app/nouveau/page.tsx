@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { t } from "@/i18n";
+import { useT } from "@/i18n";
 import { montantLigneEnDevise } from "@/lib/calculs";
 import { aujourdhuiISO, formaterPourcentage } from "@/lib/format";
 import { enregistrerForfait } from "@/lib/stockage";
@@ -39,11 +39,14 @@ function ligneParDefaut(): LigneBrouillon {
     id: crypto.randomUUID(),
     pourcentage: "100",
     dateEstimee: aujourdhuiISO(7),
-    description: t.nouveau.echeancier.descriptionExemple,
+    // Vide : l'exemple est un placeholder, pas du texte à effacer. Il vient de
+    // la langue active, qui peut changer après le montage de cette ligne.
+    description: "",
   };
 }
 
 export default function NouveauForfaitPage() {
+  const t = useT();
   const router = useRouter();
 
   const [nom, setNom] = useState("");
@@ -279,6 +282,7 @@ export default function NouveauForfaitPage() {
                   <Input
                     id={`desc-${ligne.id}`}
                     value={ligne.description}
+                    placeholder={t.nouveau.echeancier.descriptionExemple}
                     onChange={(e) =>
                       majLigne(ligne.id, { description: e.target.value })
                     }

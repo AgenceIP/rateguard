@@ -27,7 +27,7 @@ Hors périmètre, même si ça semble utile : authentification, intégration ban
 - `src/lib/types.ts` — la convention de signe est documentée en tête de fichier : `mouvementPct` positif = le CAD achète plus de devise cible = favorable à l'agence.
 - `src/lib/benchmarks.ts` — les seules constantes de frais, de paliers de volatilité et le peg SAR/USD.
 - `src/lib/format.ts` — le seul endroit où l'on arrondit. Locale `fr-CA`.
-- `src/i18n/fr.ts` — toute la copie d'interface. Aucune chaîne visible en dur dans le JSX. Pour ajouter l'anglais : créer `en.ts` avec la même forme, changer l'export de `src/i18n/index.ts`.
+- `src/i18n/fr.ts` et `en.ts` — toute la copie d'interface, dans les deux langues. Aucune chaîne visible en dur dans le JSX. Le français est la forme de référence : `Traductions = typeof fr`, donc une clé oubliée dans `en.ts` casse la compilation. `src/i18n/index.tsx` porte le contexte de langue (`useT`), le choix est retenu dans `localStorage` sous `rateguard.langue.v1`, et `src/lib/format.ts` suit la même bascule pour les nombres et les dates.
 - `src/app/api/taux/route.ts` — proxy Frankfurter, revalidation 1 h. La BCE ne publie pas le SAR : le taux CAD→SAR est dérivé via CAD→USD × 3,75 (peg saoudien depuis 1986) et le drapeau `viaPegUsd` le dit à l'écran.
 - Pas de base de données. `localStorage`, clé `rateguard.forfaits.v1`.
 

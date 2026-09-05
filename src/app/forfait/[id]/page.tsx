@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { t } from "@/i18n";
+import { useT } from "@/i18n";
 import { BENCHMARK_FRAIS } from "@/lib/benchmarks";
 import {
   calculerCoutReel,
@@ -68,6 +68,7 @@ function Section({
 export default function DetailForfaitPage({
   params,
 }: PageProps<"/forfait/[id]">) {
+  const t = useT();
   const { id } = use(params);
   const [forfait, setForfait] = useState<Forfait | null | undefined>(undefined);
   const [copie, setCopie] = useState(false);
@@ -128,7 +129,10 @@ export default function DetailForfaitPage({
     horodatage: formaterHorodatage(forfait.dateCreation),
     taux: `1 CAD = ${formaterTaux(forfait.tauxVerrouille)} ${forfait.deviseCible}`,
     paire: forfait.sourceTaux.paire,
-    source: forfait.sourceTaux.fournisseur,
+    source: t.detail.recu.sourceValeur(
+      forfait.sourceTaux.fournisseur,
+      forfait.sourceTaux.dateTaux,
+    ),
     seuil:
       seuil.mouvementDefavorablePct === null
         ? "—"
@@ -154,9 +158,11 @@ export default function DetailForfaitPage({
         <div>
           <h1 className="font-heading text-4xl font-semibold">{forfait.nom}</h1>
           <p className="chiffres mt-2 text-muted-foreground">
-            {t.detail.pelerins(forfait.nombrePelerins)},{" "}
-            {formaterCAD(forfait.montantTotalCAD)} encaissés, payables en{" "}
-            {forfait.deviseCible}
+            {t.detail.sousTitre(
+              t.detail.pelerins(forfait.nombrePelerins),
+              formaterCAD(forfait.montantTotalCAD),
+              forfait.deviseCible,
+            )}
           </p>
         </div>
 
@@ -220,7 +226,10 @@ export default function DetailForfaitPage({
               {t.detail.recu.source}
             </dt>
             <dd className="text-right text-sm">
-              {forfait.sourceTaux.fournisseur}, {forfait.sourceTaux.dateTaux}
+              {t.detail.recu.sourceValeur(
+                forfait.sourceTaux.fournisseur,
+                forfait.sourceTaux.dateTaux,
+              )}
             </dd>
           </div>
         </dl>
@@ -251,7 +260,7 @@ export default function DetailForfaitPage({
                 {cout.frais.map((ligne) => (
                   <TableRow key={ligne.cle}>
                     <TableCell>
-                      {ligne.libelle}
+                      {t.detail.cout.postes[ligne.cle]}
                       {ligne.mode === "pourcentage" && (
                         <span className="chiffres text-muted-foreground">
                           {" "}
