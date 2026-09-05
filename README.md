@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RateGuard
 
-## Getting Started
+Outil de visibilité sur le **risque de change** pour les petites agences de voyage Omra/Hajj.
 
-First, run the development server:
+Une agence encaisse des CAD auprès de ses pèlerins aujourd'hui, et paie ses fournisseurs
+saoudiens en SAR des semaines ou des mois plus tard. Entre les deux, le taux bouge — et
+personne ne le documente. RateGuard fabrique une **preuve horodatée** du taux au moment de
+l'encaissement, chiffre le coût réel du transfert et montre ce que deviendrait la marge sous
+différents scénarios.
+
+Projet réalisé pour **MuslimHacks 2026**, défi *International Trades*.
+
+## Ce que l'outil ne fait pas
+
+Ces limites sont volontaires et vérifiables dans le code :
+
+- **Aucune prédiction de taux.** Chaque scénario est étiqueté « scénario hypothétique » et les
+  directions favorable et défavorable sont générées par paires, dans la même boucle
+  (`simulerScenarios`, `src/lib/calculs.ts`). Il est structurellement impossible de produire une
+  sortie directionnelle.
+- **Aucun mouvement de fonds.** Pas de paiement, pas de transfert, pas de détention. Calcul et
+  visibilité uniquement.
+- **Tous les frais sont des estimations** issues de repères publics du secteur
+  (`src/lib/benchmarks.ts`) — jamais des devis bancaires réels. L'interface le dit en clair.
+- **Conformité Sharia** : la page dédiée cite la norme AAOIFI n° 65 (*Wa'd*) et indique
+  explicitement que les savants ne sont pas unanimes. Aucune position n'est présentée comme
+  « la » position islamique.
+
+## Données
+
+- Taux de référence de la Banque centrale européenne via [Frankfurter](https://frankfurter.dev),
+  proxifiés par `/api/taux` (revalidation 1 h).
+- La BCE ne publie pas le riyal saoudien : CAD→SAR est dérivé de CAD→USD × 3,75 (peg saoudien
+  depuis 1986). Le chemin emprunté est affiché à l'écran, pas masqué.
+- Pas de base de données. Les forfaits restent dans le `localStorage` du navigateur.
+
+## Démarrer
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # 18 tests sur les fonctions pures
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`src/lib/calculs.ts` ne dépend ni de React, ni du réseau, ni du navigateur : toute la logique
+financière est testable sans aucun mock.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pile
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui sur Base UI ·
+Recharts · Vitest
