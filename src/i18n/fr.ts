@@ -70,6 +70,10 @@ export const fr = {
       montant: "Montant total encaissé (CAD)",
       montantIndice: "Ce que le groupe vous a versé au total.",
       deviseCible: "Devise de votre fournisseur",
+      devises: {
+        SAR: "Riyal saoudien (SAR)",
+        USD: "Dollar américain (USD)",
+      },
       deviseIndice:
         "Le riyal saoudien est arrimé au dollar américain à 3,75 depuis 1986.",
       marge: "Votre marge sur ce forfait (%)",
@@ -251,7 +255,7 @@ export const fr = {
     },
 
     desaccord: {
-      titre: "Il existe un désaccord scolaire légitime",
+      titre: "Les savants ne sont pas unanimes",
       corps: [
         "Le caractère contraignant de la promesse ne fait pas l'unanimité. Une partie des juristes considère qu'une promesse engage moralement mais pas juridiquement, et qu'en rendre l'exécution obligatoire revient à reconstituer le contrat à terme que l'on cherchait à éviter.",
         "D'autres estiment au contraire qu'une promesse peut être rendue contraignante lorsqu'un besoin réel existe et que l'autre partie a engagé des frais en s'y fiant — ce qui est précisément la situation d'une agence qui a déjà encaissé ses pèlerins.",

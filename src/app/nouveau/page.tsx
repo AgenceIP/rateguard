@@ -204,11 +204,19 @@ export default function NouveauForfaitPage() {
                 }
               >
                 <SelectTrigger id="devise" className="w-full">
-                  <SelectValue />
+                  {/* Base UI affiche la valeur brute par défaut : on formate. */}
+                  <SelectValue>
+                    {(valeur: DeviseCible) => t.nouveau.champs.devises[valeur]}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SAR">Riyal saoudien (SAR)</SelectItem>
-                  <SelectItem value="USD">Dollar américain (USD)</SelectItem>
+                  {Object.entries(t.nouveau.champs.devises).map(
+                    ([code, libelle]) => (
+                      <SelectItem key={code} value={code}>
+                        {libelle}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">

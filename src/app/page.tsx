@@ -102,7 +102,7 @@ export default function ListeForfaitsPage() {
               <li key={forfait.id}>
                 <Link
                   href={`/forfait/${forfait.id}`}
-                  className="grid grid-cols-[0.75rem_1fr] gap-x-5 py-6 transition-colors hover:bg-card sm:grid-cols-[0.75rem_1fr_11rem_11rem] sm:items-baseline"
+                  className="grid grid-cols-[0.75rem_1fr] gap-x-5 py-6 transition-colors hover:bg-card sm:grid-cols-[0.75rem_1fr_13rem_11rem] sm:items-baseline"
                 >
                   <span
                     aria-hidden
@@ -137,7 +137,7 @@ export default function ListeForfaitsPage() {
                       {formaterTaux(forfait.tauxVerrouille)}{" "}
                       {forfait.deviseCible}
                     </p>
-                    <p className="chiffres mt-1 text-sm text-muted-foreground">
+                    <p className="chiffres mt-1 whitespace-nowrap text-sm text-muted-foreground">
                       {formaterHorodatage(forfait.dateCreation)}
                     </p>
                   </div>
