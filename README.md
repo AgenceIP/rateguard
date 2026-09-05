@@ -8,6 +8,8 @@ personne ne le documente. RateGuard fabrique une **preuve horodatée** du taux a
 l'encaissement, chiffre le coût réel du transfert et montre ce que deviendrait la marge sous
 différents scénarios.
 
+**Essayer : https://rateguard-eight.vercel.app**
+
 Projet réalisé pour **MuslimHacks 2026**, défi *International Trades*.
 
 ## Ce que l'outil ne fait pas
