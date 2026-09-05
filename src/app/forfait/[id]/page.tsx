@@ -112,7 +112,7 @@ export default function DetailForfaitPage({
         <p className="mt-3 leading-relaxed text-muted-foreground">
           {t.detail.introuvable.corps}
         </p>
-        <Button render={<Link href="/" />} className="mt-8">
+        <Button render={<Link href="/" />} nativeButton={false} className="mt-8">
           {t.commun.retour}
         </Button>
       </div>

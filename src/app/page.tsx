@@ -65,7 +65,7 @@ export default function ListeForfaitsPage() {
             {t.accueil.sousTitre}
           </p>
         </div>
-        <Button render={<Link href="/nouveau" />} size="lg">
+        <Button render={<Link href="/nouveau" />} nativeButton={false} size="lg">
           {t.nav.nouveau}
         </Button>
       </div>
@@ -80,7 +80,7 @@ export default function ListeForfaitsPage() {
           <p className="mt-3 leading-relaxed text-muted-foreground">
             {t.accueil.vide.corps}
           </p>
-          <Button render={<Link href="/nouveau" />} className="mt-8">
+          <Button render={<Link href="/nouveau" />} nativeButton={false} className="mt-8">
             {t.accueil.vide.action}
           </Button>
         </div>

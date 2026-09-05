@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,9 +51,16 @@ export default function NouveauForfaitPage() {
   const [montant, setMontant] = useState("50000");
   const [deviseCible, setDeviseCible] = useState<DeviseCible>("SAR");
   const [marge, setMarge] = useState("12");
-  const [echeancier, setEcheancier] = useState<LigneBrouillon[]>([
-    ligneParDefaut(),
-  ]);
+  // La ligne par défaut naît côté navigateur seulement : son identifiant
+  // (crypto.randomUUID) et sa date (aujourd'hui + 7) ne peuvent pas être
+  // calculés deux fois — une fois sur le serveur, une fois ici — sans donner
+  // deux résultats différents, ce que React signale comme une erreur
+  // d'hydratation. Le serveur rend donc un échéancier vide, rempli au montage.
+  const [echeancier, setEcheancier] = useState<LigneBrouillon[]>([]);
+
+  useEffect(() => {
+    setEcheancier([ligneParDefaut()]);
+  }, []);
 
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [enCours, setEnCours] = useState(false);
