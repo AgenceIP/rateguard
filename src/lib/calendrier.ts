@@ -146,6 +146,9 @@ function paquets(
   return cles.map((cle) => {
     const valeurs = groupes.get(cle) ?? [];
     const medianePct = valeurs.length ? percentile(valeurs, 50) : 0;
+    // `reference === 0` (devise arrimée, aucune variation) donne ratio = 0 comme
+    // sentinelle d'absence de référence, pas comme mesure de calme : `distinct`
+    // doit l'exclure, sinon un paquet sans mouvement se lit « ∞ fois plus calme ».
     const ratio = reference > 0 ? medianePct / reference : 0;
     return {
       cle,
@@ -154,6 +157,7 @@ function paquets(
       ratio,
       distinct:
         valeurs.length >= OBSERVATIONS_MINIMALES_PAQUET &&
+        ratio > 0 &&
         (ratio >= RATIO_HAUT || ratio <= RATIO_BAS),
     };
   });

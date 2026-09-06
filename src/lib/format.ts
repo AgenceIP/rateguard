@@ -92,6 +92,14 @@ export function formaterPourcentage(valeur: number, decimales = 1): string {
   );
 }
 
+/** Un nombre nu, sans devise ni pourcentage. Sert aux ratios du calendrier. */
+export function formaterNombre(valeur: number, decimales = 1): string {
+  return new Intl.NumberFormat(localeActive(), {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+  }).format(valeur);
+}
+
 export function formaterEntier(valeur: number): string {
   if (!Number.isFinite(valeur)) return "—";
   return nombre("entier", { maximumFractionDigits: 0 }).format(valeur);

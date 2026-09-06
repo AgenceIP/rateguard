@@ -141,6 +141,18 @@ describe("amplitudeParSemaineDuMois", () => {
     const paquets = amplitudeParSemaineDuMois(serie);
     expect(paquets.every((p) => !p.distinct)).toBe(true);
   });
+
+  it("ne distingue rien sur une devise arrimée, dont le taux ne bouge jamais", () => {
+    // Le lev bulgare est fixé à l'euro et publié par la BCE : trois ans de
+    // variations strictement nulles. Sans la garde `ratio > 0`, les cinq
+    // paquets passeraient pour « nettement plus calmes que la normale » et
+    // l'écran diviserait par zéro.
+    const serie = serieSynthetique("2023-09-01", 1100, () => 0);
+    const paquets = amplitudeParSemaineDuMois(serie);
+    expect(paquets.every((p) => p.n > 40)).toBe(true);
+    expect(paquets.every((p) => p.ratio === 0)).toBe(true);
+    expect(paquets.every((p) => !p.distinct)).toBe(true);
+  });
 });
 
 describe("amplitudeParJourDeSemaine", () => {
