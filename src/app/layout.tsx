@@ -23,8 +23,8 @@ const karla = Karla({
 });
 
 export const metadata: Metadata = {
-  title: `${fr.app.nom} — risque de change pour agences Omra et Hajj`,
-  description: fr.app.description,
+  title: fr.meta.titre,
+  description: fr.meta.description,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

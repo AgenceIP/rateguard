@@ -1,101 +1,138 @@
-import type { Devise } from "./types";
-
 /**
- * Formatage d'affichage — c'est le seul endroit où l'on arrondit.
- * Les fonctions de calcul travaillent en pleine précision (voir calculs.ts).
+ * Formatage d'affichage — le seul endroit où l'on arrondit.
+ * Les modules de calcul travaillent en pleine précision.
+ *
+ * L'application manipule une trentaine de devises : rien n'est codé en dur ici,
+ * `Intl.NumberFormat` connaît déjà le symbole, la position et le nombre de
+ * décimales de chacune (le yen n'en a pas, le dinar en a trois).
  */
 
 export type Langue = "fr" | "en";
 
 const LOCALES: Record<Langue, string> = { fr: "fr-CA", en: "en-CA" };
 
-function construire(locale: string) {
-  return {
-    locale,
-    // « 10,7 % » en français, « 10.7% » en anglais : l'espace fait partie de
-    // la typographie française, pas de la valeur.
-    espaceAvantPourcent: locale.startsWith("fr") ? "\u00a0" : "",
-    cad: new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "CAD",
-      maximumFractionDigits: 0,
-    }),
-    cadPrecis: new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "CAD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    entier: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
-    taux: new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    }),
-    dateLongue: new Intl.DateTimeFormat(locale, { dateStyle: "long" }),
-    dateHeure: new Intl.DateTimeFormat(locale, {
-      dateStyle: "long",
-      timeStyle: "short",
-    }),
-  };
-}
-
-let f = construire(LOCALES.fr);
+let locale = LOCALES.fr;
 
 /**
- * Appelée pendant le rendu par le fournisseur de langue, avant que les enfants
- * ne formatent quoi que ce soit. Un seul état de langue existe à la fois côté
- * navigateur ; le serveur, lui, ne rend aucun nombre localisé (les pages qui en
- * affichent lisent le localStorage et n'ont donc pas de contenu au SSR).
+ * L'espace insécable avant « % » appartient à la typographie française, pas à
+ * la valeur : « 10,7 % » en français, « 10.7% » en anglais.
  */
+function espaceAvantPourcent(): string {
+  return locale.startsWith("fr") ? " " : "";
+}
+
+/**
+ * Les formateurs sont mis en cache : en construire un par cellule d'un tableau
+ * de trente lignes est mesurablement lent, et `Intl` est réputé coûteux.
+ */
+const cache = new Map<string, Intl.NumberFormat>();
+
+function nombre(cle: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const pleine = `${locale}|${cle}`;
+  const existant = cache.get(pleine);
+  if (existant) return existant;
+  const cree = new Intl.NumberFormat(locale, options);
+  cache.set(pleine, cree);
+  return cree;
+}
+
 export function definirLangueFormat(langue: Langue): void {
-  if (f.locale === LOCALES[langue]) return;
-  f = construire(LOCALES[langue]);
+  locale = LOCALES[langue];
 }
 
-export function formaterCAD(valeur: number, precis = false): string {
-  return (precis ? f.cadPrecis : f.cad).format(valeur);
+/** Locale active, pour les modules qui appellent `Intl.DisplayNames`. */
+export function localeActive(): string {
+  return locale;
 }
 
-export function formaterDevise(valeur: number, devise: Devise): string {
-  if (devise === "CAD") return formaterCAD(valeur);
-  return `${f.entier.format(valeur)} ${devise}`;
-}
-
-/** Un taux de change se lit à 4 décimales, pas 2. */
-export function formaterTaux(valeur: number): string {
-  return f.taux.format(valeur);
-}
-
-export function formaterPourcentage(valeur: number, decimales = 1): string {
-  const nombre = new Intl.NumberFormat(f.locale, {
+/**
+ * Montant dans sa devise. `decimales` à 0 pour les grands nombres d'un tableau,
+ * à 2 quand le cent compte — un écart de frais de 4 $ ne doit pas s'afficher
+ * « 0 $ » sous prétexte d'arrondi.
+ */
+export function formaterMontant(
+  valeur: number,
+  devise: string,
+  decimales: 0 | 2 = 0,
+): string {
+  if (!Number.isFinite(valeur)) return "—";
+  return nombre(`c${devise}${decimales}`, {
+    style: "currency",
+    currency: devise,
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   }).format(valeur);
-  return `${nombre}${f.espaceAvantPourcent}%`;
 }
 
-/** Pourcentage signé — le signe porte du sens dans les scénarios. */
-export function formaterPourcentageSigne(valeur: number, decimales = 1): string {
+/** Montant signé, pour les écarts. Le « + » est explicite. */
+export function formaterMontantSigne(valeur: number, devise: string): string {
+  if (!Number.isFinite(valeur)) return "—";
   const signe = valeur > 0 ? "+" : valeur < 0 ? "−" : "";
-  return `${signe}${formaterPourcentage(Math.abs(valeur), decimales)}`;
+  return signe + formaterMontant(Math.abs(valeur), devise, 0);
 }
 
-export function formaterCADSigne(valeur: number): string {
-  const signe = valeur > 0 ? "+" : valeur < 0 ? "−" : "";
-  return `${signe}${formaterCAD(Math.abs(valeur))}`;
+/** Un taux de change s'affiche à quatre décimales, jamais arrondi plus court. */
+export function formaterTaux(valeur: number): string {
+  if (!Number.isFinite(valeur)) return "—";
+  return nombre("taux", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }).format(valeur);
 }
 
+export function formaterPourcentage(valeur: number, decimales = 1): string {
+  if (!Number.isFinite(valeur)) return "—";
+  return (
+    nombre(`p${decimales}`, {
+      minimumFractionDigits: decimales,
+      maximumFractionDigits: decimales,
+    }).format(valeur) +
+    espaceAvantPourcent() +
+    "%"
+  );
+}
+
+export function formaterEntier(valeur: number): string {
+  if (!Number.isFinite(valeur)) return "—";
+  return nombre("entier", { maximumFractionDigits: 0 }).format(valeur);
+}
+
+/** Date ISO « 2026-09-04 » → « 4 septembre 2026 ». */
 export function formaterDate(iso: string): string {
-  return f.dateLongue.format(new Date(`${iso}T12:00:00`));
+  if (!iso) return "—";
+  const [a, m, j] = iso.split("-").map(Number);
+  if (!a || !m || !j) return iso;
+  // Construite en heure locale : `new Date("2026-09-04")` est interprétée en
+  // UTC et recule d'un jour à l'ouest de Greenwich.
+  return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
+    new Date(a, m - 1, j),
+  );
 }
 
 export function formaterHorodatage(ms: number): string {
-  return f.dateHeure.format(new Date(ms));
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(new Date(ms));
 }
 
-/** Date du jour au format yyyy-mm-dd, pour les valeurs par défaut du formulaire. */
-export function aujourdhuiISO(decalageJours = 0): string {
-  const date = new Date();
-  date.setDate(date.getDate() + decalageJours);
-  return date.toISOString().slice(0, 10);
+/** Date du jour au format ISO, en heure locale. */
+export function aujourdhuiISO(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Nombre de jours civils entre aujourd'hui et une date ISO. Négatif si passée. */
+export function joursAvant(iso: string): number {
+  const [a, m, j] = iso.split("-").map(Number);
+  if (!a || !m || !j) return 0;
+  const cible = new Date(a, m - 1, j);
+  const maintenant = new Date();
+  const minuit = new Date(
+    maintenant.getFullYear(),
+    maintenant.getMonth(),
+    maintenant.getDate(),
+  );
+  return Math.round((cible.getTime() - minuit.getTime()) / 86_400_000);
 }

@@ -57,14 +57,20 @@ export function EnTete() {
           href="/"
           className="font-heading text-lg font-semibold tracking-tight"
         >
-          {t.app.nom}
+          {t.marque.nom}
         </Link>
         <nav className="flex items-baseline gap-6 text-sm">
           <Link
             href="/"
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
-            {t.nav.forfaits}
+            {t.nav.accueil}
+          </Link>
+          <Link
+            href="/donnees"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t.nav.donnees}
           </Link>
           <Link
             href="/conformite"
@@ -87,7 +93,7 @@ export function PiedDePage() {
   return (
     <footer className="mt-20 border-t border-border">
       <p className="mx-auto w-full max-w-6xl px-6 py-6 text-sm leading-relaxed text-muted-foreground">
-        {t.detail.avertissementGeneral}
+        {t.piedDePage}
       </p>
     </footer>
   );

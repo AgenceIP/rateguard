@@ -1,275 +1,461 @@
 /**
- * Tout le texte de l'interface vit ici, jamais dans le JSX.
- * Le français est la forme de référence : en.ts doit satisfaire le type
- * Traductions dérivé de ce fichier. Toute clé ajoutée ici doit l'être là.
+ * Toute la copie d'interface, en français.
+ *
+ * Le français est la FORME DE RÉFÉRENCE : `Traductions = typeof fr`, donc une
+ * clé oubliée dans `en.ts` casse la compilation au lieu d'afficher un trou.
+ *
+ * Trois règles de rédaction, imposées par le cahier des charges et à respecter
+ * pour toute clé ajoutée ici :
+ *   1. aucun terme financier sans son explication immédiate — « taux figé à
+ *      l'avance » suit toujours « forward » ;
+ *   2. les montants avant les pourcentages, toujours ;
+ *   3. aucun chiffre présenté comme une certitude : « entre X et Y »,
+ *      « environ », « en moyenne » — jamais « sera ».
  */
 export const fr = {
-  app: {
-    nom: "RateGuard",
+  meta: {
+    titre: "RateGuard — ce que vos paiements internationaux coûtent vraiment",
     description:
-      "Voyez ce que le délai entre l'encaissement de vos pèlerins et le paiement de vos fournisseurs coûte réellement à votre agence.",
+      "Estimez le coût réel d'un paiement international, mesurez le risque de change sur votre propre rythme de paie et comparez vos options. Aucune prévision de taux.",
   },
+
+  marque: {
+    nom: "RateGuard",
+    baseline: "Le coût réel de vos paiements à l'étranger",
+  },
+
+  langue: { choisir: "Langue de l'interface", fr: "Français", en: "English" },
 
   nav: {
-    forfaits: "Forfaits",
+    accueil: "Paiements",
+    donnees: "D'où viennent les données",
     conformite: "Conformité",
-    nouveau: "Nouveau forfait",
-  },
-
-  langue: {
-    choisir: "Langue de l'interface",
-    fr: "Français",
-    en: "English",
   },
 
   commun: {
     chargement: "Chargement…",
-    retour: "Retour aux forfaits",
+    enregistrer: "Enregistrer",
+    annuler: "Annuler",
+    ajouter: "Ajouter",
+    supprimer: "Retirer",
+    modifier: "Modifier",
+    retour: "Retour aux paiements",
+    voirDetail: "Voir le détail",
+    entre: "entre",
+    et: "et",
+    environ: "environ",
+    aucuneDonnee: "Données insuffisantes",
+    /** Deux-points d'énumération : le français prend une espace avant, pas l'anglais. */
+    deuxPoints: " : ",
     estimation: "Estimation",
-    devise: "Devise",
-    montant: "Montant",
-    date: "Date",
-    description: "Description",
-    supprimer: "Supprimer",
-    fermer: "Fermer",
+    vosChiffres: "Vos chiffres",
+    source: "Source",
+    verifieLe: "Vérifié le",
+    // Rappelé partout où un chiffre de frais apparaît.
+    fraisEstimes:
+      "Les frais affichés sont des estimations tirées d'ordres de grandeur publics, pas des devis de votre fournisseur.",
+  },
+
+  // Chaque terme financier employé à l'écran est défini ici, et l'interface
+  // affiche la définition à côté du terme — jamais dans un glossaire séparé
+  // que personne n'ouvre.
+  lexique: {
+    taux: {
+      terme: "Taux de change",
+      definition:
+        "Combien d'unités de la devise étrangère vous obtenez pour un dollar canadien.",
+    },
+    marge: {
+      terme: "Marge dans le taux",
+      definition:
+        "La part que votre banque garde en vous donnant un taux moins bon que celui du marché. Elle n'apparaît sur aucun relevé.",
+    },
+    volatilite: {
+      terme: "Volatilité",
+      definition:
+        "L'ampleur habituelle des mouvements d'une devise. Elle dit de combien ça bouge, jamais dans quel sens.",
+    },
+    forward: {
+      terme: "Contrat à terme",
+      definition:
+        "Un taux figé à l'avance : vous convenez aujourd'hui du taux qui s'appliquera au paiement futur.",
+    },
+    etalement: {
+      terme: "Étalement",
+      definition:
+        "Découper un gros paiement en plusieurs petits, à des dates différentes, pour ne pas dépendre du taux d'une seule journée.",
+    },
+    multidevise: {
+      terme: "Compte multi-devises",
+      definition:
+        "Un compte qui détient plusieurs monnaies. Vous convertissez une fois, puis vous payez localement.",
+    },
+    correspondant: {
+      terme: "Banque correspondante",
+      definition:
+        "Une banque intermédiaire par laquelle transite votre virement. Elle prélève ses frais au passage, sans figurer sur votre relevé.",
+    },
+    stablecoin: {
+      terme: "Stablecoin",
+      definition:
+        "Une cryptomonnaie dont la valeur suit une monnaie officielle, le plus souvent le dollar américain.",
+    },
   },
 
   accueil: {
-    titre: "Vos forfaits",
-    sousTitre:
-      "Chaque forfait garde la trace du taux au moment où vous avez encaissé vos pèlerins.",
-    tauxActuel: "Taux du marché aujourd'hui",
-    tauxIndisponible: "Taux du jour indisponible pour l'instant.",
+    titre: "Vos paiements internationaux",
+    intro:
+      "Ajoutez les personnes que vous payez à l'étranger. Pour chacune, RateGuard estime ce que le paiement coûte réellement, mesure de combien la devise a l'habitude de bouger sur votre rythme de paie, et compare vos options.",
+    deviseBase: "Devise de votre entreprise",
+    deviseBaseAide: "La monnaie dans laquelle vous tenez vos comptes.",
+
     vide: {
-      titre: "Aucun forfait pour l'instant",
+      titre: "Aucune personne enregistrée",
       corps:
-        "Créez votre premier forfait au moment où vous encaissez un groupe. RateGuard capte le taux de ce moment précis et vous montre ce qui change d'ici le paiement de votre fournisseur.",
-      action: "Créer un forfait",
+        "Ajoutez un premier employé ou contractant pour voir ce que ses paiements coûtent vraiment.",
+      exemple: "Remplir avec un exemple",
     },
+
+    equipe: {
+      titre: "Qui vous payez",
+      ajouter: "Ajouter une personne",
+      nom: "Nom",
+      nomExemple: "Ex. : Amina Diallo",
+      pays: "Pays",
+      devise: "Devise de paiement",
+      deviseAuto: "Devise usuelle du pays, modifiable.",
+      montant: "Montant par paiement",
+      montantAide: "Dans la devise de la personne, pas dans la vôtre.",
+      frequence: "Rythme",
+      type: "Statut",
+      employe: "Employé",
+      contractant: "Contractant",
+      prochainPaiement: "Prochain paiement",
+      confirmerSuppression: (nom: string) => `Retirer ${nom} de la liste ?`,
+    },
+
+    frequences: {
+      hebdomadaire: "Chaque semaine",
+      bihebdomadaire: "Aux deux semaines",
+      mensuelle: "Chaque mois",
+      trimestrielle: "Chaque trimestre",
+      ponctuelle: "Paiement unique",
+    },
+
     colonnes: {
-      forfait: "Forfait",
-      verrouille: "Taux verrouillé",
-      exposition: "Exposition",
-      marge: "Marge restante estimée",
+      personne: "Personne",
+      montant: "Montant dû",
+      coute: "Vous coûte environ",
+      risque: "Risque si vous attendez",
+      quand: "Payé le",
     },
-    statut: {
-      vert: "Sous contrôle",
-      jaune: "À surveiller",
-      rouge: "Marge dépassée",
-    },
-    progression: (parcouru: string, seuil: string) =>
-      `${parcouru} sur ${seuil}`,
-    statutExplication: {
-      vert: "Le taux actuel est favorable ou reste loin de votre seuil.",
-      jaune: "Le taux actuel a parcouru plus de la moitié du chemin vers votre seuil.",
-      rouge: "Le taux actuel dépasse le seuil : ce forfait n'est plus rentable au prix affiché.",
-    },
+
+    joursRestants: (jours: number) =>
+      jours < 0
+        ? `en retard de ${Math.abs(jours)} jour${Math.abs(jours) > 1 ? "s" : ""}`
+        : jours === 0
+          ? "aujourd'hui"
+          : `dans ${jours} jour${jours > 1 ? "s" : ""}`,
+
+    totalMensuel: (montant: string) =>
+      `Environ ${montant} par mois en paiements internationaux, frais compris.`,
   },
 
-  nouveau: {
-    titre: "Nouveau forfait",
-    sousTitre:
-      "Remplissez ceci au moment où vous encaissez le groupe. RateGuard capte le taux de change de cet instant précis et l'horodate.",
-    champs: {
-      nom: "Nom du forfait",
-      nomIndice: "Comme vous l'appelez dans vos dossiers.",
-      nomExemple: "Groupe Omra Décembre 2026",
-      pelerins: "Nombre de pèlerins",
-      montant: "Montant total encaissé (CAD)",
-      montantIndice: "Ce que le groupe vous a versé au total.",
-      deviseCible: "Devise de votre fournisseur",
-      devises: {
-        SAR: "Riyal saoudien (SAR)",
-        USD: "Dollar américain (USD)",
-      },
-      deviseIndice:
-        "Le riyal saoudien est arrimé au dollar américain à 3,75 depuis 1986.",
-      marge: "Votre marge sur ce forfait (%)",
-      margeIndice:
-        "Votre profit avant tout mouvement de taux. Sert à calculer votre seuil critique.",
-    },
-    echeancier: {
-      titre: "Paiements à votre fournisseur",
-      indice:
-        "Une ligne par versement. La date compte autant que le montant : c'est elle qui détermine la durée de votre exposition.",
-      ajouter: "Ajouter un paiement",
-      retirer: "Retirer",
-      ligne: "Versement",
-      pourcentage: "Part du forfait (%)",
-      dateEstimee: "Date de paiement prévue",
-      descriptionExemple: "Virement au fournisseur saoudien",
-      totalOk: "Les versements couvrent 100 % du forfait.",
-      totalEcart: (total: string) =>
-        `Les versements couvrent ${total} du forfait. Ajustez les parts pour atteindre 100 %.`,
-    },
-    action: "Verrouiller le taux et créer le forfait",
-    actionEnCours: "Capture du taux en cours…",
-    erreurs: {
-      nom: "Donnez un nom à ce forfait.",
-      pelerins: "Indiquez au moins un pèlerin.",
-      montant: "Indiquez le montant encaissé.",
-      marge: "Indiquez une marge entre 0 et 100 %.",
-      echeancierVide: "Ajoutez au moins un paiement à votre fournisseur.",
-      echeancierTotal: "Les parts des versements doivent totaliser 100 %.",
-      echeancierDate: "Chaque versement a besoin d'une date de paiement.",
-      taux: "Le taux n'a pas pu être capté. Vérifiez votre connexion et réessayez.",
-    },
-  },
+  paiement: {
+    retour: "Retour aux paiements",
+    sousTitre: (montant: string, pays: string, quand: string) =>
+      `${montant} à verser — ${pays}, ${quand}.`,
 
-  detail: {
-    pelerins: (n: number) => `${n} pèlerin${n > 1 ? "s" : ""}`,
-    sousTitre: (pelerins: string, montant: string, devise: string) =>
-      `${pelerins}, ${montant} encaissés, payables en ${devise}`,
-    introuvable: {
-      titre: "Ce forfait est introuvable",
-      corps:
-        "Les forfaits sont enregistrés dans ce navigateur seulement. Si vous avez changé d'appareil ou vidé vos données de navigation, il n'existe plus ici.",
-    },
-
-    recu: {
-      titre: "Reçu de verrouillage de taux",
-      intro:
-        "Le taux du marché au moment où vous avez encaissé ce groupe, capté et horodaté.",
-      capteLe: "Capté le",
-      taux: "Taux du marché",
-      source: "Source",
-      sourceValeur: (fournisseur: string, date: string) =>
-        `${fournisseur} — taux de référence de la BCE, ${date}`,
-      peg:
-        "La Banque centrale européenne, source de ce taux, ne publie pas le riyal saoudien. Le taux affiché est le CAD/USD converti au peg saoudien fixe de 3,75 SAR pour 1 USD. Votre exposition réelle est donc au dollar américain.",
-      usage:
-        "Conservez ce reçu : il justifie tout ajustement de prix que vous auriez à expliquer à vos clients plus tard.",
-    },
-
-    cout: {
-      titre: "Coût réel estimé du transfert",
-      intro:
-        "Le taux affiché n'est pas le prix payé. Voici ce qui s'ajoute entre votre compte et celui de votre fournisseur.",
-      envoye: "Vous envoyez",
-      auMid: "Au taux du marché, sans frais",
-      recu: "Ce qui arrive réellement chez votre fournisseur",
-      totalFrais: "Coût total des frais",
-      tauxEffectif: "Votre taux réel après frais",
-      colonneFrais: "Poste",
-      colonneMontant: "Coût estimé",
-      // Indexés par la clé produite par calculerCoutReel : la fonction de
-      // calcul reste pure et sans langue.
-      postes: {
-        transfert: "Frais de virement international",
-        intermediaire: "Frais de banque intermédiaire",
-        reception: "Frais de réception du bénéficiaire",
-        spread: "Marge de change intégrée au taux",
-      },
-    },
-
-    scenarios: {
-      titre: "Scénarios hypothétiques",
-      avertissement:
-        "Ceci illustre des scénarios hypothétiques, pas une prédiction du mouvement réel du taux de change. Les deux directions sont toujours présentées ensemble.",
-      duree: (jours: number, palier: string) =>
-        `Votre fournisseur est payé dans ${jours} jour${jours > 1 ? "s" : ""}. Sur cette durée (${palier}), RateGuard illustre des mouvements de faible amplitude.`,
-      palier: {
-        court: "moins de deux semaines",
-        moyen: "de deux semaines à deux mois",
-        long: "plus de deux mois",
-      },
-      axeX: "Mouvement du taux",
-      axeY: "Effet sur votre marge (CAD)",
-      legendeFavorable: "Le CAD s'apprécie : vous payez moins",
-      legendeDefavorable: "Le CAD se déprécie : vous payez plus",
-      colonneMouvement: "Mouvement",
-      colonneCout: "Coût du versement",
-      colonneEcart: "Effet sur la marge",
-      colonneMargeFinale: "Marge restante",
-      note:
-        "Les amplitudes illustrées s'ajustent à la durée réelle de votre exposition. C'est une approximation simplifiée, pas un modèle de volatilité financière.",
-    },
-
-    seuil: {
-      titre: "Seuil critique",
-      corps: (pct: string) =>
-        `Un mouvement défavorable de ${pct} annule entièrement votre marge sur ce forfait.`,
-      detail: (marge: string, exposition: string) =>
-        `Votre marge de ${marge} couvre une exposition de ${exposition}.`,
-      inatteignable:
-        "Ce forfait n'a pas de seuil : votre marge est nulle ou négative avant même tout mouvement du taux.",
-      aucuneExposition:
-        "Ce forfait n'a pas d'exposition au change : aucun versement en devise étrangère n'y est rattaché.",
-    },
-
-    comparaison: {
-      titre: "Comparaison de fournisseur de transfert",
-      intro:
-        "Lorsque le paiement se fait par virement bancaire, la banque applique généralement son propre taux au moment du transfert, avec une marge intégrée — c'est un coût que vous pouvez réduire en comparant les canaux de transfert, indépendamment du mouvement du marché.",
-      midMarket: "Taux du marché",
-      midMarketNote: "Le taux réel, sans marge. C'est la référence.",
-      banque: "Taux bancaire typique, estimé",
-      banqueNote: (pct: string) =>
-        `Le taux du marché moins une marge de ${pct}, valeur observée publiquement pour une banque de détail canadienne.`,
-      ecart: (montant: string) =>
-        `Sur ce forfait, l'écart entre les deux taux représente environ ${montant}.`,
-      estimation:
-        "Ce chiffre est une estimation construite à partir de benchmarks publics. Ce n'est pas un devis : demandez son taux à votre banque et comparez.",
-    },
-
+    // La phrase demandée par le cahier des charges : une seule phrase, sans
+    // jargon, qui chiffre le risque puis le prix de la certitude.
     resume: {
-      action: "Copier le résumé",
-      copie: "Résumé copié",
-      titre: "Résumé pour votre client",
-      intro:
-        "Ce texte est prêt à coller dans un courriel. Il ne contient aucune donnée que votre client ne pourrait pas voir.",
-      modele: (v: {
-        nom: string;
-        pelerins: string;
-        montant: string;
-        horodatage: string;
-        taux: string;
-        paire: string;
-        source: string;
-        seuil: string;
-      }) =>
-        [
-          `Objet : ${v.nom} — taux de change verrouillé`,
-          "",
-          "Bonjour,",
-          "",
-          `Voici les informations de change rattachées à votre forfait (${v.pelerins}, ${v.montant}).`,
-          "",
-          `Taux ${v.paire} capté le ${v.horodatage} : ${v.taux}`,
-          `Source : ${v.source}`,
-          "",
-          `Ce taux est celui du marché au moment de votre paiement. Le règlement de nos fournisseurs saoudiens se fait plus tard, à un taux qui peut différer. Un mouvement défavorable de ${v.seuil} absorberait entièrement notre marge sur ce forfait.`,
-          "",
-          "Nous vous transmettons cette information par transparence : si un ajustement devenait nécessaire, il serait fondé sur ce relevé horodaté et non sur une estimation faite après coup.",
-          "",
-          "Cordialement,",
-        ].join("\n"),
+      titre: "En une phrase",
+      avecRisque: (montant: string, quand: string, risque: string, prime: string) =>
+        `Pour votre paiement de ${montant} ${quand} : si vous attendez, le paiement pourrait vous coûter environ ${risque} de plus. Si cela vous inquiète, figer le taux aujourd'hui coûte environ ${prime} de plus mais supprime complètement ce risque.`,
+      certitudeMoinsChere: (
+        montant: string,
+        quand: string,
+        risque: string,
+        ecart: string,
+      ) =>
+        `Pour votre paiement de ${montant} ${quand} : si vous attendez, le paiement pourrait vous coûter environ ${risque} de plus. Ici, figer le taux aujourd'hui coûte même ${ecart} de moins que le virement bancaire, tout en supprimant ce risque.`,
+      sansRisque: (montant: string, quand: string) =>
+        `Pour votre paiement de ${montant} ${quand} : nous n'avons pas assez d'historique sur cette devise pour chiffrer le risque. Les coûts ci-dessous restent valables, le risque de change ne l'est pas.`,
+      ancree: (montant: string, devise: string) =>
+        `Pour votre paiement de ${montant} : ${devise} n'a pas bougé face à votre devise sur toute la période observée. Le risque de change est nul ici, seuls les frais comptent.`,
+      economie: (montant: string, option: string) =>
+        `Option la moins chère aujourd'hui : ${option}, environ ${montant} de moins que le virement bancaire.`,
     },
 
-    avertissementGeneral:
-      "RateGuard ne déplace, ne transfère et ne détient aucun fonds. C'est un outil de visibilité et de calcul. Les frais affichés sont des estimations fondées sur des benchmarks publics de l'industrie, jamais des devis de votre banque.",
+    taux: {
+      titre: "Le taux utilisé",
+      valeur: (de: string, taux: string, vers: string) => `1 ${de} = ${taux} ${vers}`,
+      source: "Taux de référence de la Banque centrale européenne, via Frankfurter",
+      dateTaux: "Cours de clôture du",
+      avertissement:
+        "La BCE publie un seul taux par jour ouvrable, vers 16 h heure d'Europe centrale. Ce n'est pas un cours en direct et il n'y en a pas les fins de semaine : votre banque appliquera son propre taux au moment du virement.",
+      indisponible: {
+        titre: "Aucun taux disponible pour cette devise",
+        devise_non_publiee: (devise: string) =>
+          `La Banque centrale européenne ne publie pas de taux pour ${devise}. Plutôt que d'en fabriquer un par un détour, RateGuard préfère ne rien afficher : demandez son taux à votre banque et saisissez vos frais réels ci-dessous.`,
+        source_indisponible:
+          "La source de taux n'a pas répondu. Réessayez dans un instant — rien n'a été estimé à sa place.",
+        meme_devise:
+          "Cette personne est payée dans votre propre devise : il n'y a aucune conversion, donc aucun risque de change.",
+      },
+    },
+
+    stats: {
+      titre: "Comment cette devise se comporte",
+      intro: (jours: number, devise: string) =>
+        `Mesuré sur l'historique réel de la paire ${devise}, sur des fenêtres de ${jours} jours — la durée qui sépare deux de vos paiements.`,
+      periode: (debut: string, fin: string, n: number) =>
+        `${n} cours quotidiens observés, du ${debut} au ${fin}.`,
+      amplitudeTypique: "Mouvement habituel sur cette durée",
+      amplitudeTypiqueAide:
+        "La moitié des périodes observées ont bougé moins que ça, l'autre moitié davantage.",
+      amplitudeLarge: "Mouvement plus large",
+      amplitudeLargeAide:
+        "Quatre périodes sur cinq sont restées en dessous de ce mouvement.",
+      pire: "Pire mouvement défavorable observé",
+      pireAide:
+        "Le plus fort mouvement contre vous sur toute la période observée. Ce n'est pas un plafond : rien n'empêche qu'il soit dépassé.",
+      annualisee: "Volatilité annualisée",
+      annualiseeAide:
+        "Le chiffre que citent les financiers pour comparer deux devises entre elles.",
+      insuffisant:
+        "L'historique disponible est trop court pour mesurer quoi que ce soit de fiable sur cette devise. RateGuard n'affiche donc aucun chiffre de risque plutôt qu'un chiffre fabriqué.",
+      ancree:
+        "Cette devise n'a pas bougé d'un centième face à la vôtre sur toute la période observée — elle est probablement arrimée officiellement. Le risque de change est nul, mais les frais, eux, restent entiers.",
+      nonPrediction:
+        "Ces chiffres décrivent le passé. Ils indiquent de combien cette devise a l'habitude de bouger, jamais dans quel sens elle ira. Sur quelques semaines, la direction d'un taux de change n'est pas prévisible — c'est justement pourquoi cet outil chiffre le risque au lieu de le deviner.",
+    },
+
+    strategies: {
+      titre: "Vos options, chiffrées",
+      intro:
+        "Le même paiement, par quatre chemins différents. Les montants sont exprimés dans votre devise, frais compris, et sont donnés en fourchette parce qu'aucun ne peut être connu au dollar près à l'avance.",
+      colonneOption: "Option",
+      colonneCout: "Coût total estimé",
+      colonneCertitude: "Ce que vous savez d'avance",
+      certain: "Le montant exact",
+      incertain: (plage: string) => `Fourchette ${plage}`,
+      plage: (bas: string, haut: string) => `entre ${bas} et ${haut}`,
+      central: (montant: string) => `environ ${montant}`,
+      transferts: (n: number) => `${n} transferts`,
+      detailFrais: "Détail des frais",
+
+      spot: {
+        nom: "Virement bancaire aujourd'hui",
+        court: "Ce que vous faites probablement déjà",
+        explication:
+          "Vous envoyez le paiement par virement international au taux du jour. C'est simple et immédiat, mais si le paiement est prévu plus tard, le taux qui s'appliquera n'est pas celui d'aujourd'hui.",
+        pour: "Rien à mettre en place.",
+        contre:
+          "Marge de la banque élevée, frais de correspondant invisibles, et le taux du jour du virement reste inconnu.",
+      },
+      forward: {
+        nom: "Taux figé à l'avance",
+        court: "Contrat à terme",
+        explication:
+          "Vous convenez aujourd'hui avec un courtier du taux qui s'appliquera à une date future. Vous payez peut-être un peu plus cher, mais vous savez exactement combien, sans surprise.",
+        pour: "Le seul choix dont le coût est connu d'avance, au dollar près.",
+        contre:
+          "Coûte une prime, exige souvent un dépôt de garantie que ce calcul ne chiffre pas, et vous engage même si le taux évolue en votre faveur.",
+      },
+      etalement: {
+        nom: "Étaler en plusieurs versements",
+        court: "Plusieurs petits transferts",
+        explication:
+          "Au lieu d'un seul gros transfert, vous en faites plusieurs à des dates différentes. Vous obtenez une moyenne de plusieurs taux au lieu de dépendre d'un seul jour.",
+        pour: "Réduit l'effet d'une mauvaise journée sans rien avoir à signer.",
+        contre:
+          "Vous payez les frais fixes à chaque transfert. Sur un petit montant, cela coûte souvent plus cher que le risque évité.",
+      },
+      multidevise: {
+        nom: "Compte multi-devises",
+        court: "Wise, Airwallex et équivalents",
+        explication:
+          "Vous convertissez une fois vers un compte qui détient la devise, puis vous payez localement. Les frais de correspondant et de réception disparaissent parce que le versement final est domestique.",
+        pour:
+          "Nettement moins cher dès que vous payez régulièrement dans la même devise.",
+        contre:
+          "Ne supprime pas le risque de change tant que le compte n'est pas approvisionné à l'avance — et le provisionner immobilise votre trésorerie.",
+      },
+
+      postes: {
+        virement: "Frais de virement international",
+        intermediaire: "Frais de banque correspondante",
+        reception: "Frais de réception, subis par le bénéficiaire",
+        marge: "Marge intégrée au taux",
+        prime: "Prime du taux figé",
+        abonnement: "Abonnement, réparti sur les paiements du mois",
+      },
+
+      swift: {
+        titre: "Un choix que votre banque ne vous propose pas spontanément",
+        corps:
+          "Chaque virement international porte une instruction de frais. Par défaut c'est SHA : votre bénéficiaire reçoit un montant que personne ne connaît d'avance, parce que les banques du trajet se servent au passage. En demandant OUR, vous payez tous les frais et votre bénéficiaire reçoit exactement le montant annoncé.",
+        sha: "SHA — par défaut. Les frais du trajet sont prélevés sur le montant. Votre bénéficiaire reçoit moins que prévu, d'un montant inconnu d'avance.",
+        our: "OUR — vous payez tout. Votre bénéficiaire reçoit le montant exact. Votre banque facture un supplément forfaitaire pour ce service.",
+        ben: "BEN — le bénéficiaire assume l'ensemble des frais.",
+        conclusion:
+          "C'est le levier le plus direct sur la partie des frais que l'on dit « impossible à connaître d'avance » : elle ne l'est pas si vous choisissez de la porter.",
+      },
+    },
+
+    crypto: {
+      titre: "Peut-on payer cette personne en cryptomonnaie ?",
+      statut: {
+        fiat_obligatoire: "Non, pas le salaire",
+        permis_sous_conditions: "Oui, sous conditions",
+        cours_legal: "Oui, cours légal",
+        interdit: "Non, interdit",
+        non_verifie: "Nous n'avons pas vérifié",
+      },
+      nonVerifie:
+        "Nous n'avons pas encore lu les règles de ce pays. Plutôt que de deviner à partir de pays voisins, RateGuard préfère le dire : cette case est vide, et une case vide vaut mieux qu'une réponse fabriquée.",
+      risquesTitre: "Ce qu'il faut savoir",
+      universels: {
+        volatilite:
+          "Si le jeton n'est pas un stablecoin, sa valeur peut varier entre l'envoi et le moment où la personne le convertit. Le salarié supporte cette variation, pas vous.",
+        conversion:
+          "Convertir en monnaie locale dépend des banques du pays. Dans plusieurs corridors, l'argent met de 24 à 72 heures à devenir dépensable, ce qui annule l'avantage de rapidité.",
+        protection:
+          "Une personne payée en crypto peut se voir refuser un prêt, un bail ou un dossier d'immigration : ces démarches réclament des relevés de salaire en monnaie officielle.",
+        verification:
+          "Les obligations fiscales et sociales ne disparaissent jamais : retenues, cotisations et feuillets restent calculés et déclarés en monnaie officielle.",
+      },
+      sourcesTitre: "Sources consultées",
+      avertissement:
+        "Ceci n'est pas un avis juridique. Vérifiez avec un comptable ou un avocat du pays concerné avant de verser un salaire en cryptomonnaie.",
+    },
+
+    hypotheses: {
+      titre: "Vos frais réels",
+      intro:
+        "Tant que vous n'avez pas saisi vos propres chiffres, RateGuard affiche des fourchettes larges, parce que les frais dépendent entièrement de votre banque et de votre volume. Entrez ce que vous payez vraiment et les fourchettes se resserrent.",
+      parDefaut:
+        "Chiffres par défaut. Les montants sont donnés en fourchette parce qu'ils ne viennent pas de votre banque.",
+      personnalise:
+        "Vos chiffres. Les fourchettes ne reflètent plus que le mouvement du taux.",
+      virementFixe: "Frais de virement international",
+      virementIntermediaire: "Frais de banque correspondante",
+      virementReception: "Frais de réception",
+      virementMargePct: "Marge de votre banque dans le taux (%)",
+      specialisteMargePct: "Marge d'un spécialiste du transfert (%)",
+      specialisteFixe: "Frais fixes du spécialiste",
+      forwardPrimePct: "Prime pour figer le taux (%)",
+      multiDeviseMargePct: "Marge du compte multi-devises (%)",
+      multiDeviseMensuel: "Abonnement mensuel du compte",
+      reinitialiser: "Revenir aux estimations par défaut",
+      appliquer: "Utiliser mes chiffres",
+    },
+
+    decision: {
+      titre: "Garder une trace",
+      corps:
+        "Notez l'option retenue. RateGuard fige le taux et sa date : dans six semaines, vous pourrez expliquer ce choix avec ce que vous saviez ce jour-là, pas avec ce que vous saurez alors.",
+      bouton: "Noter cette décision",
+      enregistree: "Décision enregistrée",
+      journal: "Décisions déjà notées",
+      colonneDate: "Notée le",
+      colonneOption: "Option retenue",
+      colonneTaux: "Taux du jour",
+      colonneCout: "Coût estimé",
+      vide: "Aucune décision notée pour cette personne.",
+    },
+  },
+
+  donnees: {
+    titre: "D'où viennent les données",
+    intro:
+      "Un outil qui affiche des chiffres doit dire d'où ils sortent, à quand ils remontent et ce qu'il ne sait pas. Cette page répond aux trois.",
+
+    taux: {
+      titre: "Les taux de change",
+      corps: [
+        "Les taux viennent de l'API Frankfurter, qui redistribue les taux de référence publiés par la Banque centrale européenne. C'est une source publique, gratuite et vérifiable — vous pouvez interroger la même adresse que nous.",
+        "La BCE publie un seul cours par jour ouvrable, vers 16 h heure d'Europe centrale. Il n'y a ni fin de semaine ni jour férié dans la série. Un taux consulté un samedi est donc celui du vendredi, et RateGuard affiche toujours la date du cours plutôt que « maintenant ».",
+        "Ce n'est pas un taux négociable : c'est une référence. Votre banque appliquera son propre taux, moins bon, au moment du virement. Les taux en direct sont vendus par des fournisseurs commerciaux ; nous avons préféré une source gratuite et transparente à une source payante et opaque.",
+      ],
+      devisesAbsentes:
+        "La BCE ne publie qu'une trentaine de devises. Pour toutes les autres — riyal saoudien, naira, dirham, peso argentin et bien d'autres — RateGuard n'affiche aucun taux et le dit à l'écran, plutôt que de le reconstruire par un détour qui aurait l'air d'une mesure.",
+    },
+
+    statistiques: {
+      titre: "Les statistiques de mouvement",
+      corps: [
+        "La volatilité est l'écart-type des variations quotidiennes du taux, calculé sur l'historique réel de la paire, puis annualisé en le multipliant par la racine de 252 — le nombre de séances dans une année.",
+        "Les amplitudes affichées sont mesurées sur des fenêtres glissantes de la longueur exacte de votre cycle de paie. Si vous payez aux deux semaines, nous regardons toutes les périodes de deux semaines de l'historique et nous rapportons leur distribution.",
+        "Ces fenêtres se chevauchent, ce qui corrèle les observations et resserre un peu les extrêmes. C'est un compromis assumé : sur un an d'historique, il n'y a que vingt-six quinzaines qui ne se chevauchent pas, ce qui est trop peu pour un percentile.",
+        "En dessous de vingt variations quotidiennes ou de dix fenêtres, aucune statistique n'est publiée. L'écran affiche « données insuffisantes ».",
+      ],
+    },
+
+    frais: {
+      titre: "Les frais",
+      corps: [
+        "Les frais par défaut sont des ordres de grandeur publiquement observés pour une PME canadienne. Ils ne proviennent d'aucune banque en particulier et ne constituent aucune offre de prix.",
+        "C'est pour ça qu'ils s'affichent en fourchette, à plus ou moins 35 %. Le cahier des charges du défi le dit lui-même : les frais de banque correspondante peuvent n'être connus qu'après le transfert. Afficher un montant au cent près sur une donnée non connaissable serait une fausse précision.",
+        "Dès que vous saisissez vos propres chiffres, la fourchette de frais disparaît et il ne reste que l'incertitude du taux. L'interface change d'étiquette pour que vous sachiez toujours ce que vous regardez.",
+      ],
+    },
+
+    crypto: {
+      titre: "Les informations réglementaires sur la crypto",
+      corps: [
+        "Chaque fiche pays a été construite en lisant des sources publiques identifiées, jamais à partir de la mémoire d'un modèle de langage. Les sources sont listées sous chaque fiche et la date de dernière vérification est affichée.",
+        "Les pays que nous n'avons pas vérifiés apparaissent comme non vérifiés. Nous ne déduisons pas le statut d'un pays de celui de ses voisins.",
+        "La réglementation bouge vite. Une fiche datée de plusieurs mois doit être revérifiée avant toute décision.",
+      ],
+      derniere: "Dernière vérification des fiches pays",
+      paysVerifies: "Pays vérifiés",
+    },
+
+    stockage: {
+      titre: "Où vont vos données",
+      supabase:
+        "Vos personnes et vos décisions sont enregistrées dans une base Supabase, rattachées à un identifiant d'espace généré par votre navigateur. Il n'y a ni compte, ni mot de passe, ni adresse courriel demandée.",
+      local:
+        "Aucune base n'est configurée : tout reste dans le stockage local de votre navigateur et ne quitte jamais votre machine. Vider les données du site efface tout.",
+    },
+
+    lexiqueTitre: "Les mots employés à l'écran",
+
+    limites: {
+      titre: "Ce que RateGuard ne fait pas",
+      liste: [
+        "Ne prédit aucun taux de change et ne dit jamais quand envoyer votre argent. Sur quelques semaines, la direction d'un taux n'est pas prévisible à partir de son passé.",
+        "Ne déplace, ne transfère et ne détient aucun fonds. C'est un outil de calcul.",
+        "N'obtient aucun devis de votre banque ni d'aucun fournisseur.",
+        "Ne donne ni conseil financier, ni conseil juridique, ni avis fiscal.",
+      ],
+    },
   },
 
   conformite: {
-    titre: "Le risque de change et la conformité à la Sharia",
+    titre: "Gérer le risque de change sans contrat à terme",
     intro:
-      "Cette page explique en langage simple ce qu'est le risque de change pour une agence de voyage religieux, et présente un mécanisme discuté par les juristes musulmans pour l'encadrer. Elle ne remplace pas l'avis de votre propre conseiller religieux.",
+      "Le contrat à terme est l'instrument classique pour figer un taux. Il soulève des objections en droit musulman, et il n'est de toute façon pas le seul chemin. Cette page présente les autres, et expose le débat plutôt que de le trancher.",
 
-    risque: {
-      titre: "Ce qu'est le risque de change, concrètement",
+    sansInstrument: {
+      titre: "Les voies qui ne demandent aucun montage",
       corps: [
-        "Votre pèlerin vous paie en dollars canadiens aujourd'hui. Votre hôtelier à Makkah, lui, veut des riyals, et vous le paierez dans une semaine, un mois, parfois plusieurs mois si vous bloquez des chambres à l'avance pour le Hajj.",
-        "Entre ces deux moments, le taux bouge. Personne ne l'a décidé, et surtout pas vous : votre banque appliquera simplement son taux du jour au moment du virement. Si le dollar canadien a perdu du terrain, il vous faut plus de dollars pour acheter les mêmes riyals, et la différence sort directement de votre marge.",
-        "Ce n'est pas de la spéculation. C'est un décalage de calendrier entre le moment où vous encaissez et le moment où vous payez.",
+        "Payer tôt. Convertir dès que vous avez les fonds supprime le risque, parce qu'il n'y a plus de délai entre l'encaissement et le paiement. L'échange au comptant ne soulève aucune objection chez aucune école.",
+        "Facturer ou contracter dans votre propre devise. Si votre contractant accepte d'être payé en dollars canadiens, le risque change de côté. C'est une négociation, pas un instrument financier.",
+        "Apparier vos flux. Si une partie de vos revenus arrive déjà en dollars américains, elle annule naturellement une partie de ce que vous devez payer en dollars américains.",
+        "Détenir la devise à l'avance sur un compte multi-devises. Vous convertissez quand vous avez l'argent et vous payez plus tard : le risque disparaît, mais votre trésorerie est immobilisée.",
       ],
+      note: "Aucune de ces quatre voies n'exige une institution financière particulière ni un avis savant contesté. Elles sont rarement expliquées aux petites entreprises, parce que personne n'a rien à leur vendre dessus.",
     },
 
     wad: {
       titre: "Le wa'd, une promesse unilatérale",
       corps: [
-        "Les instruments classiques utilisés en finance conventionnelle pour figer un taux à l'avance — les contrats à terme de change — soulèvent des objections en droit musulman : l'échange de devises y est différé des deux côtés, ce qui heurte l'exigence de simultanéité dans le sarf, l'échange de monnaies.",
-        "Le wa'd est une avenue différente. Il s'agit d'une promesse unilatérale : une seule partie s'engage à conclure un échange à un taux convenu, à une date donnée. Comme une seule partie est liée, l'opération n'est pas un contrat d'échange à terme réciproque, et l'échange lui-même se dénoue au comptant le jour venu.",
-        "L'AAOIFI, l'organisme international qui publie les normes de finance islamique, traite de la promesse et de son caractère contraignant dans sa Shariah Standard No. 65 (Wa'd). C'est la référence à demander à votre conseiller si vous explorez cette piste avec une institution.",
+        "Les contrats à terme de change soulèvent une objection en droit musulman : l'échange des deux devises y est différé de part et d'autre, ce qui heurte l'exigence de simultanéité dans le sarf, l'échange de monnaies.",
+        "Le wa'd est une autre avenue. C'est une promesse unilatérale : une seule partie s'engage à conclure un échange à un taux convenu, à une date donnée. Comme une seule partie est liée, l'opération n'est pas un contrat d'échange à terme réciproque, et l'échange lui-même se dénoue au comptant le jour venu.",
+        "L'AAOIFI, l'organisme international qui publie les normes de finance islamique, traite de la promesse et de son caractère contraignant dans sa Shariah Standard No. 65 (Wa'd). C'est la référence à citer si vous explorez cette piste avec une institution.",
       ],
       norme: "AAOIFI Shariah Standard No. 65 — Promise (Wa'd)",
     },
@@ -277,30 +463,25 @@ export const fr = {
     desaccord: {
       titre: "Les savants ne sont pas unanimes",
       corps: [
-        "Le caractère contraignant de la promesse ne fait pas l'unanimité. Une partie des juristes considère qu'une promesse engage moralement mais pas juridiquement, et qu'en rendre l'exécution obligatoire revient à reconstituer le contrat à terme que l'on cherchait à éviter.",
-        "D'autres estiment au contraire qu'une promesse peut être rendue contraignante lorsqu'un besoin réel existe et que l'autre partie a engagé des frais en s'y fiant — ce qui est précisément la situation d'une agence qui a déjà encaissé ses pèlerins.",
-        "Il existe aussi une critique de fond, portée par des juristes qui jugent que ces montages reproduisent économiquement l'instrument conventionnel sous une forme différente, et que la conformité de forme ne suffit pas.",
-        "Aucune de ces positions n'est « la » position islamique. Elles coexistent, et le choix d'un mécanisme relève d'un avis que vous devez chercher auprès de votre propre conseiller religieux, en lui décrivant votre situation précise.",
+        "Le caractère contraignant de la promesse ne fait pas consensus. Une partie des juristes considère qu'une promesse engage moralement mais pas juridiquement, et qu'en rendre l'exécution obligatoire revient à reconstituer le contrat à terme que l'on cherchait à éviter.",
+        "D'autres estiment qu'une promesse peut être rendue contraignante lorsqu'un besoin réel existe et que l'autre partie a engagé des frais en s'y fiant — la situation d'une entreprise qui a déjà signé avec ses contractants.",
+        "Une troisième critique, de fond, tient que ces montages reproduisent économiquement l'instrument conventionnel sous une autre forme, et que la conformité de forme ne suffit pas.",
+        "Aucune de ces positions n'est « la » position islamique. Elles coexistent, et le choix relève d'un avis que vous devez chercher auprès de votre propre conseiller, en lui décrivant votre situation précise.",
       ],
     },
 
-    limites: {
-      titre: "Ce que RateGuard fait et ne fait pas",
-      fait: [
-        "Capte et horodate le taux du marché au moment où vous encaissez un groupe.",
-        "Estime ce que le transfert vous coûte réellement, frais compris.",
-        "Illustre l'effet de mouvements hypothétiques du taux sur votre marge, dans les deux directions.",
-        "Calcule à partir de quel mouvement défavorable un forfait cesse d'être rentable.",
-      ],
-      neFaitPas: [
-        "Ne prédit aucun taux de change futur et ne recommande aucun moment pour convertir.",
-        "Ne déplace, ne transfère et ne détient aucun fonds.",
-        "N'obtient aucun devis de votre banque : les frais affichés sont des estimations de benchmarks publics.",
-        "Ne donne aucun avis religieux ni aucun conseil financier.",
+    cryptoFiqh: {
+      titre: "Et la crypto ?",
+      corps: [
+        "Le statut des cryptomonnaies fait lui aussi l'objet d'un débat savant ouvert : certains juristes y voient un bien échangeable, d'autres refusent de leur reconnaître la qualité de monnaie, d'autres encore distinguent selon l'adossement du jeton.",
+        "RateGuard ne tranche pas plus ici qu'ailleurs. La section réglementaire de chaque personne dit ce que la loi du pays permet ; la question de la licéité religieuse est distincte et vous appartient.",
       ],
     },
 
     disclaimer:
-      "Cette page est un contenu informatif. Elle n'est ni un avis religieux, ni un conseil financier, ni un avis juridique. Les normes citées le sont à titre de référence pour vous permettre de poursuivre la discussion avec les personnes qualifiées de votre choix.",
+      "Cette page est un contenu informatif. Elle n'est ni un avis religieux, ni un conseil financier, ni un avis juridique. Les normes citées le sont pour vous permettre de poursuivre la discussion avec les personnes qualifiées de votre choix.",
   },
+
+  piedDePage:
+    "RateGuard ne déplace, ne transfère et ne détient aucun fonds, et ne prédit aucun taux de change. Les frais affichés sont des estimations tirées d'ordres de grandeur publics, jamais des devis de votre banque.",
 };

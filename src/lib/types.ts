@@ -1,134 +1,185 @@
-// Types centraux de RateGuard.
-// Convention de signe utilisée PARTOUT dans le code : un `mouvementPct` positif
-// signifie que le CAD achète PLUS de devise cible — donc favorable à l'agence.
+/**
+ * Modèle de domaine — paie internationale.
+ *
+ * CONVENTION DE TAUX, valable dans tout le code : un taux est toujours exprimé
+ * « combien d'unités de la devise du bénéficiaire s'achètent avec 1 unité de la
+ * devise de base ». CAD→USD = 0,74 veut dire qu'un dollar canadien achète
+ * 0,74 dollar américain.
+ *
+ * Il en découle la convention de signe, qui compte parce que l'utilisateur
+ * PAIE dans la devise étrangère :
+ *
+ *   taux qui MONTE  → la devise de base achète plus → le paiement coûte MOINS
+ *   taux qui BAISSE → la devise de base achète moins → le paiement coûte PLUS
+ *
+ * Donc un mouvement DÉFAVORABLE est une BAISSE du taux. Toute fonction qui
+ * parle de « défavorable » applique cette définition, jamais l'inverse.
+ */
 
-export type Devise = "CAD" | "SAR" | "USD";
-export type DeviseCible = Exclude<Devise, "CAD">;
+/** Rythme de paiement. Sert à choisir la fenêtre d'observation historique. */
+export type Frequence =
+  | "hebdomadaire"
+  | "bihebdomadaire"
+  | "mensuelle"
+  | "trimestrielle"
+  | "ponctuelle";
 
-/** Provenance du taux capturé — affichée telle quelle dans le reçu de verrouillage. */
-export interface SourceTaux {
-  fournisseur: string;
-  /** "CAD/SAR" ou "CAD/USD" */
-  paire: string;
-  /** Date de publication du taux par la BCE (ISO yyyy-mm-dd) — distincte du moment du fetch. */
-  dateTaux: string;
-  /** Moment exact du clic « verrouiller » (ms epoch). */
-  horodatageRecuperation: number;
-  /**
-   * true quand le taux CAD->SAR a été obtenu via CAD->USD puis le peg saoudien.
-   * La BCE ne publie pas le SAR ; le riyal est arrimé au dollar américain
-   * à 3,75 SAR = 1 USD depuis 1986.
-   */
-  viaPegUsd: boolean;
-}
+/** Nombre de jours civils entre deux paiements, par fréquence. */
+export const JOURS_PAR_FREQUENCE: Record<Frequence, number> = {
+  hebdomadaire: 7,
+  bihebdomadaire: 14,
+  mensuelle: 30,
+  trimestrielle: 91,
+  // Un paiement unique n'a pas de cycle : on prend un mois comme horizon
+  // d'observation par défaut, l'utilisateur voit la fenêtre affichée.
+  ponctuelle: 30,
+};
 
-export interface LignePaiement {
-  id: string;
-  /** Part du montantTotalCAD, de 0 à 100. Source de vérité saisie par l'utilisateur. */
-  pourcentage: number;
-  /** Montant dû exprimé en `devise`, figé au taux verrouillé au moment de la création. */
-  montant: number;
-  devise: DeviseCible;
-  /** ISO yyyy-mm-dd */
-  dateEstimee: string;
-  description: string;
-}
+export type TypeBeneficiaire = "employe" | "contractant";
 
-export interface Forfait {
+export interface Beneficiaire {
   id: string;
   nom: string;
-  nombrePelerins: number;
-  montantTotalCAD: number;
-  deviseCible: DeviseCible;
-  echeancier: LignePaiement[];
-  /** Marge connue de l'agence, en pourcentage du montant total (0 à 100). */
-  margeConnue: number;
-  /** Moment du verrouillage de taux (ms epoch). */
-  dateCreation: number;
-  /** 1 CAD = tauxVerrouille unités de deviseCible. */
-  tauxVerrouille: number;
-  sourceTaux: SourceTaux;
+  /** ISO 3166-1 alpha-2, majuscules. Clé de la fiche réglementaire crypto. */
+  pays: string;
+  /** ISO 4217, majuscules. Devise dans laquelle cette personne est payée. */
+  devise: string;
+  /** Montant dû, exprimé dans `devise` — pas dans la devise de base. */
+  montant: number;
+  frequence: Frequence;
+  type: TypeBeneficiaire;
+  /** Date ISO du prochain versement. */
+  prochainPaiement: string;
 }
 
-// --- Sorties des fonctions de calcul pures -------------------------------
+/**
+ * Hypothèses de frais.
+ *
+ * Ce sont des ESTIMATIONS par défaut, pas des devis. L'utilisateur peut toutes
+ * les remplacer par les chiffres de son propre fournisseur ; `personnalise`
+ * bascule alors à true et l'interface change d'étiquette, parce qu'un chiffre
+ * fourni par l'utilisateur et un chiffre par défaut ne méritent pas la même
+ * confiance à l'écran.
+ */
+export interface Hypotheses {
+  /** Frais fixes d'un virement bancaire sortant, en devise de base. */
+  virementFixe: number;
+  /** Prélèvement d'une banque correspondante sur le trajet. */
+  virementIntermediaire: number;
+  /** Frais appliqués à l'arrivée, subis par le bénéficiaire. */
+  virementReception: number;
+  /** Marge que la banque intègre au taux, en %. */
+  virementMargePct: number;
+  /** Marge d'un spécialiste du transfert (Wise, OFX…), en %. */
+  specialisteMargePct: number;
+  specialisteFixe: number;
+  /** Surcoût d'un taux figé à l'avance, en % du montant. */
+  forwardPrimePct: number;
+  /** Frais de conversion d'un compte multi-devises, en %. */
+  multiDeviseMargePct: number;
+  /** Abonnement mensuel d'un compte multi-devises, en devise de base. */
+  multiDeviseMensuel: number;
+  personnalise: boolean;
+}
+
+export interface Profil {
+  /** ISO 4217. Devise dans laquelle l'entreprise tient ses comptes. */
+  deviseBase: string;
+  beneficiaires: Beneficiaire[];
+  hypotheses: Hypotheses;
+}
+
+/** Une série de taux de clôture, alignée : `dates[i]` ↔ `valeurs[i]`. */
+export interface SerieTaux {
+  de: string;
+  vers: string;
+  dates: string[];
+  valeurs: number[];
+}
+
+/**
+ * Statistiques mesurées sur l'historique. Aucune de ces valeurs n'est une
+ * prévision : ce sont des descriptions de ce qui s'est produit.
+ */
+export interface StatsVolatilite {
+  de: string;
+  vers: string;
+  /** Nombre de variations quotidiennes exploitées. */
+  observations: number;
+  debut: string;
+  fin: string;
+  /** Écart-type des variations quotidiennes, en %. */
+  quotidiennePct: number;
+  /** Idem, annualisé (× √252), en %. Le chiffre que citent les financiers. */
+  annualiseePct: number;
+  /** Longueur de la fenêtre d'observation, en jours civils. */
+  fenetreJours: number;
+  /** Fenêtres glissantes réellement mesurées à cette longueur. */
+  fenetresObservees: number;
+  /** Amplitude absolue de mouvement sur la fenêtre : médiane, P80, P95, en %. */
+  amplitudeMedianePct: number;
+  amplitudeP80Pct: number;
+  amplitudeP95Pct: number;
+  /** Pire mouvement défavorable observé sur une fenêtre (valeur positive). */
+  pireDefavorablePct: number;
+  /** Meilleur mouvement favorable observé (valeur positive). */
+  meilleurFavorablePct: number;
+  /**
+   * false quand l'historique est trop court pour dire quoi que ce soit.
+   * L'interface affiche alors « données insuffisantes », jamais un chiffre.
+   */
+  suffisant: boolean;
+}
+
+export type CleStrategie = "spot" | "forward" | "etalement" | "multidevise";
 
 export interface LigneFrais {
-  cle: "transfert" | "intermediaire" | "reception" | "spread";
-  montantCAD: number;
+  cle:
+    | "virement"
+    | "intermediaire"
+    | "reception"
+    | "marge"
+    | "prime"
+    | "abonnement";
+  montant: number;
+  /** Texte de la valeur brute (« 2,5 % », « 45 $ ») construit à l'affichage. */
   mode: "pourcentage" | "fixe";
-  /** 2.5 pour 2,5 %, ou 45 pour 45 $. */
   valeur: number;
 }
 
-export interface CoutReel {
-  montantCAD: number;
-  tauxMidMarket: number;
-  /** Ce que le montant vaudrait sans aucun frais. */
-  montantCibleAuMid: number;
-  /** Ce qui arrive réellement chez le fournisseur, après spread et frais fixes. */
-  montantCibleRecu: number;
-  frais: LigneFrais[];
-  totalFraisCAD: number;
-  /** Devise réellement reçue ÷ CAD réellement sortis. */
-  tauxEffectif: number;
+export interface CoutStrategie {
+  cle: CleStrategie;
+  /** Coût central en devise de base, au taux du jour. */
+  coutCentral: number;
+  /** Borne basse de la plage plausible (mouvement favorable P80). */
+  coutPlancher: number;
+  /** Borne haute (mouvement défavorable P80). */
+  coutPlafond: number;
+  /** Frais et marges seuls, sans le montant converti. */
+  fraisTotal: number;
+  lignes: LigneFrais[];
+  /** true quand le coût est connu d'avance : la plage est réduite à un point. */
+  certain: boolean;
+  /** Largeur de la plage. Zéro = aucune incertitude de change. */
+  incertitude: number;
+  /** Nombre de transferts. > 1 pour l'étalement. */
+  nombreTransferts: number;
 }
 
-/** <14 jours | 14 jours à 2 mois | >2 mois */
-export type PalierVolatilite = "court" | "moyen" | "long";
+export type StatutCrypto =
+  | "fiat_obligatoire"
+  | "permis_sous_conditions"
+  | "cours_legal"
+  | "interdit"
+  | "non_verifie";
 
-export interface Scenario {
-  /** Signé, sur le taux CAD->cible. Positif = favorable à l'agence. */
-  mouvementPct: number;
-  tauxHypothetique: number;
-  /** CAD nécessaires pour honorer l'échéancier à ce taux hypothétique. */
-  coutCADRequis: number;
-  /** Écart vs le coût au taux verrouillé. Positif = l'agence paie moins. */
-  ecartCAD: number;
-  margeResultanteCAD: number;
-  margeResultantePct: number;
-  favorable: boolean;
-}
-
-export interface SimulationScenarios {
-  palier: PalierVolatilite;
-  joursAvantPremierPaiement: number;
-  /** Amplitudes du palier, ex. [0.5, 1, 2]. */
-  amplitudes: number[];
-  /** Toujours symétrique : une entrée -x et une entrée +x par amplitude. */
-  scenarios: Scenario[];
-}
-
-export interface SeuilCritique {
-  /** false si la marge est déjà nulle/négative ou s'il n'y a aucune exposition. */
-  atteignable: boolean;
-  /**
-   * Ampleur POSITIVE du mouvement défavorable qui ramène la marge à zéro.
-   * 6.2 se lit « un mouvement défavorable de 6,2 % annule la marge ».
-   */
-  mouvementDefavorablePct: number | null;
-  margeCAD: number;
-  expositionCAD: number;
-}
-
-export interface ComparaisonCanal {
-  tauxMidMarket: number;
-  /** Marge bancaire benchmark (2 à 3 %) — ESTIMATION publique, jamais un devis. */
-  margeBancaireBenchmarkPct: number;
-  tauxBancaireEstime: number;
-  coutMidMarketCAD: number;
-  coutBancaireEstimeCAD: number;
-  /** Surcoût estimé du canal bancaire sur ce forfait précis. */
-  ecartCAD: number;
-}
-
-export type StatutForfait = "vert" | "jaune" | "rouge";
-
-export interface BenchmarkFrais {
-  spreadBancairePct: number;
-  fraisTransfertFixeCAD: number;
-  fraisBanqueIntermediaireCAD: number;
-  fraisReceptionCAD: number;
-  /** Cité dans l'UI, pas seulement en commentaire. */
-  source: string;
-  derniereRevision: string;
+export interface FicheCrypto {
+  pays: string;
+  statut: StatutCrypto;
+  /** Une phrase, en langage simple. */
+  resume: string;
+  risques: string[];
+  sources: { titre: string; url: string }[];
+  /** Date ISO de la dernière vérification humaine de cette fiche. */
+  verifieLe: string;
 }

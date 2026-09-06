@@ -4,173 +4,480 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { CODES_PAYS, DEVISES_BASE, PAYS_DEVISE, nomPays } from "@/data/pays";
 import { useT } from "@/i18n";
 import {
-  calculerSeuilCritique,
-  calculerStatut,
-  expositionCible,
-} from "@/lib/calculs";
-import {
-  formaterCAD,
-  formaterDevise,
-  formaterHorodatage,
-  formaterPourcentage,
-  formaterTaux,
+  aujourdhuiISO,
+  formaterMontant,
+  joursAvant,
+  localeActive,
 } from "@/lib/format";
-import { lireForfaits } from "@/lib/stockage";
-import { recupererTaux } from "@/lib/taux";
-import type { DeviseCible, Forfait, StatutForfait } from "@/lib/types";
+import { useMarches } from "@/lib/marche";
+import { resumerPaiement } from "@/lib/strategies";
+import { enregistrerProfil, lireProfil, PROFIL_VIDE } from "@/lib/stockage";
+import {
+  JOURS_PAR_FREQUENCE,
+  type Beneficiaire,
+  type Frequence,
+  type Profil,
+} from "@/lib/types";
+import { calculerVolatilite } from "@/lib/volatilite";
 
-const COULEUR_STATUT: Record<StatutForfait, string> = {
-  vert: "bg-statut-vert",
-  jaune: "bg-statut-jaune",
-  rouge: "bg-statut-rouge",
-};
+const FREQUENCES: Frequence[] = [
+  "hebdomadaire",
+  "bihebdomadaire",
+  "mensuelle",
+  "trimestrielle",
+  "ponctuelle",
+];
 
-const TEXTE_STATUT: Record<StatutForfait, string> = {
-  vert: "text-statut-vert",
-  jaune: "text-statut-jaune",
-  rouge: "text-statut-rouge",
-};
+const CLASSE_CHAMP =
+  "h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
-export default function ListeForfaitsPage() {
+/**
+ * Trois personnes de démonstration, choisies pour montrer les trois cas que
+ * l'outil doit savoir traiter : une devise publiée et liquide, une devise
+ * publiée plus agitée, et une devise que la BCE ne publie pas du tout.
+ */
+function exemple(): Beneficiaire[] {
+  const dans = (jours: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + jours);
+    return d.toISOString().slice(0, 10);
+  };
+  return [
+    {
+      id: crypto.randomUUID(),
+      nom: "Amina Diallo",
+      pays: "US",
+      devise: "USD",
+      montant: 6200,
+      frequence: "mensuelle",
+      type: "contractant",
+      prochainPaiement: dans(21),
+    },
+    {
+      id: crypto.randomUUID(),
+      nom: "Tomás Ferreira",
+      pays: "BR",
+      devise: "BRL",
+      montant: 14000,
+      frequence: "bihebdomadaire",
+      type: "employe",
+      prochainPaiement: dans(9),
+    },
+    {
+      id: crypto.randomUUID(),
+      nom: "Chidi Okonkwo",
+      pays: "NG",
+      devise: "NGN",
+      montant: 2400000,
+      frequence: "mensuelle",
+      type: "contractant",
+      prochainPaiement: dans(14),
+    },
+  ];
+}
+
+export default function Accueil() {
   const t = useT();
-  const [forfaits, setForfaits] = useState<Forfait[] | null>(null);
-  const [tauxActuels, setTauxActuels] = useState<
-    Partial<Record<DeviseCible, number>>
-  >({});
+  const [profil, setProfil] = useState<Profil | null>(null);
+  const [ouvert, setOuvert] = useState(false);
 
   useEffect(() => {
-    const enregistres = lireForfaits();
-    setForfaits(enregistres);
-
-    // On ne rafraîchit que les devises réellement présentes dans les forfaits.
-    const devises = [...new Set(enregistres.map((f) => f.deviseCible))];
-    devises.forEach((devise) => {
-      recupererTaux(devise)
-        .then(({ taux }) =>
-          setTauxActuels((actuels) => ({ ...actuels, [devise]: taux })),
-        )
-        .catch(() => undefined);
-    });
+    void lireProfil().then(setProfil);
   }, []);
 
+  function maj(suivant: Profil) {
+    setProfil(suivant);
+    void enregistrerProfil(suivant);
+  }
+
+  const beneficiaires = profil?.beneficiaires ?? [];
+  const { marches } = useMarches(
+    profil?.deviseBase ?? PROFIL_VIDE.deviseBase,
+    beneficiaires.map((b) => b.devise),
+  );
+
+  if (!profil) {
+    return (
+      <p className="mx-auto max-w-6xl px-6 py-16 text-muted-foreground">
+        {t.commun.chargement}
+      </p>
+    );
+  }
+
+  const locale = localeActive();
+  const base = profil.deviseBase;
+
+  // Le total mensuel n'a de sens que si toutes les devises ont un taux : on
+  // n'additionne pas des montants dont une partie manque.
+  const lignes = beneficiaires.map((b) => {
+    const marche = marches[b.devise];
+    const fenetre = JOURS_PAR_FREQUENCE[b.frequence];
+    const stats =
+      marche?.serie && marche.taux
+        ? calculerVolatilite(marche.serie, fenetre)
+        : null;
+    const resume =
+      marche?.taux && stats
+        ? resumerPaiement(
+            b.montant,
+            marche.taux,
+            stats,
+            profil.hypotheses,
+            30 / fenetre,
+          )
+        : null;
+    return { b, marche, stats, resume };
+  });
+
+  const complet =
+    lignes.length > 0 && lignes.every((l) => l.resume !== null);
+  const totalMensuel = lignes.reduce(
+    (somme, l) =>
+      somme +
+      (l.resume ? (l.resume.coutAujourdhui * 30) / JOURS_PAR_FREQUENCE[l.b.frequence] : 0),
+    0,
+  );
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-14">
+    <div className="mx-auto w-full max-w-6xl px-6 py-12">
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1 className="font-heading text-4xl font-semibold">
+        <div className="max-w-2xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">
             {t.accueil.titre}
           </h1>
-          <p className="mt-3 max-w-[58ch] leading-relaxed text-muted-foreground">
-            {t.accueil.sousTitre}
+          <p className="mt-3 leading-relaxed text-muted-foreground">
+            {t.accueil.intro}
           </p>
         </div>
-        <Button render={<Link href="/nouveau" />} nativeButton={false} size="lg">
-          {t.nav.nouveau}
-        </Button>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.deviseBase}
+          </span>
+          <select
+            value={base}
+            onChange={(e) => maj({ ...profil, deviseBase: e.target.value })}
+            className={`${CLASSE_CHAMP} mt-1 w-40`}
+          >
+            {DEVISES_BASE.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {forfaits === null ? (
-        <p className="mt-16 text-muted-foreground">{t.commun.chargement}</p>
-      ) : forfaits.length === 0 ? (
-        <div className="mt-16 max-w-[58ch] border-t border-border pt-10">
-          <h2 className="font-heading text-2xl font-semibold">
+      {beneficiaires.length === 0 ? (
+        <div className="mt-12 border-y border-border py-12">
+          <h2 className="font-heading text-xl font-semibold">
             {t.accueil.vide.titre}
           </h2>
-          <p className="mt-3 leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-xl leading-relaxed text-muted-foreground">
             {t.accueil.vide.corps}
           </p>
-          <Button render={<Link href="/nouveau" />} nativeButton={false} className="mt-8">
-            {t.accueil.vide.action}
-          </Button>
+          <div className="mt-6 flex gap-3">
+            <Button onClick={() => setOuvert(true)}>
+              {t.accueil.equipe.ajouter}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => maj({ ...profil, beneficiaires: exemple() })}
+            >
+              {t.accueil.vide.exemple}
+            </Button>
+          </div>
         </div>
       ) : (
         <ul className="registre mt-12 border-y border-border">
-          {forfaits.map((forfait) => {
-            const tauxActuel = tauxActuels[forfait.deviseCible];
-            const statut = tauxActuel
-              ? calculerStatut(forfait, tauxActuel)
-              : null;
-            const seuil = calculerSeuilCritique(forfait);
-            const mouvementPct = tauxActuel
-              ? ((tauxActuel - forfait.tauxVerrouille) /
-                  forfait.tauxVerrouille) *
-                100
-              : null;
+          {lignes.map(({ b, marche, resume }) => {
+            const jours = joursAvant(b.prochainPaiement);
+            const quand = t.accueil.joursRestants(jours);
+            const montant = formaterMontant(b.montant, b.devise, 0);
 
             return (
-              <li key={forfait.id}>
-                <Link
-                  href={`/forfait/${forfait.id}`}
-                  className="grid grid-cols-[0.75rem_1fr] gap-x-5 py-6 transition-colors hover:bg-card sm:grid-cols-[0.75rem_1fr_13rem_11rem] sm:items-baseline"
-                >
-                  <span
-                    aria-hidden
-                    className={`mt-2 size-3 rounded-full ${
-                      statut ? COULEUR_STATUT[statut] : "bg-border"
-                    }`}
-                  />
+              <li key={b.id} className="py-7">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                  <h2 className="font-heading text-lg font-semibold">
+                    {b.nom}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {nomPays(b.pays, locale)} · {t.accueil.equipe[b.type]} ·{" "}
+                    {t.accueil.frequences[b.frequence].toLowerCase()}
+                  </p>
+                </div>
 
-                  <div>
-                    <p className="font-heading text-xl font-semibold">
-                      {forfait.nom}
-                    </p>
-                    <p className="chiffres mt-1 text-sm text-muted-foreground">
-                      {t.detail.pelerins(forfait.nombrePelerins)},{" "}
-                      {formaterCAD(forfait.montantTotalCAD)}
-                    </p>
-                    {statut && (
-                      <p className={`mt-2 text-sm ${TEXTE_STATUT[statut]}`}>
-                        {t.accueil.statut[statut]} —{" "}
-                        <span className="text-muted-foreground">
-                          {t.accueil.statutExplication[statut]}
-                        </span>
-                      </p>
-                    )}
-                  </div>
+                <p className="mt-3 max-w-3xl text-lg leading-relaxed">
+                  {resume
+                    ? !resume.suffisant
+                      ? t.paiement.resume.sansRisque(montant, quand)
+                      : resume.risque === 0
+                        ? t.paiement.resume.ancree(montant, b.devise)
+                        : resume.prixDeLaCertitude > 0
+                          ? t.paiement.resume.avecRisque(
+                              montant,
+                              quand,
+                              formaterMontant(resume.risque, base, 0),
+                              formaterMontant(resume.prixDeLaCertitude, base, 0),
+                            )
+                          : t.paiement.resume.certitudeMoinsChere(
+                              montant,
+                              quand,
+                              formaterMontant(resume.risque, base, 0),
+                              formaterMontant(-resume.prixDeLaCertitude, base, 0),
+                            )
+                    : marche?.motif === "devise_non_publiee"
+                      ? t.paiement.taux.indisponible.devise_non_publiee(
+                          b.devise,
+                        )
+                      : marche?.motif === "meme_devise"
+                        ? t.paiement.taux.indisponible.meme_devise
+                        : t.commun.chargement}
+                </p>
 
-                  <div className="col-start-2 mt-4 sm:col-start-auto sm:mt-0">
-                    <p className="text-sm text-muted-foreground">
-                      {t.accueil.colonnes.verrouille}
-                    </p>
-                    <p className="chiffres mt-1">
-                      {formaterTaux(forfait.tauxVerrouille)}{" "}
-                      {forfait.deviseCible}
-                    </p>
-                    <p className="chiffres mt-1 whitespace-nowrap text-sm text-muted-foreground">
-                      {formaterHorodatage(forfait.dateCreation)}
-                    </p>
-                  </div>
-
-                  <div className="col-start-2 mt-4 sm:col-start-auto sm:mt-0 sm:text-right">
-                    <p className="text-sm text-muted-foreground">
-                      {t.accueil.colonnes.exposition}
-                    </p>
-                    <p className="chiffres mt-1">
-                      {formaterDevise(
-                        expositionCible(forfait),
-                        forfait.deviseCible,
-                      )}
-                    </p>
-                    {mouvementPct !== null &&
-                      seuil.mouvementDefavorablePct !== null && (
-                        <p className="chiffres mt-1 text-sm text-muted-foreground">
-                          {t.accueil.progression(
-                            formaterPourcentage(Math.max(0, -mouvementPct)),
-                            formaterPourcentage(
-                              seuil.mouvementDefavorablePct,
-                            ),
-                          )}
-                        </p>
-                      )}
-                  </div>
-                </Link>
+                <div className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2 text-sm">
+                  <span className="chiffres">
+                    <span className="text-muted-foreground">
+                      {t.accueil.colonnes.montant}
+                      {t.commun.deuxPoints}
+                    </span>
+                    {montant}
+                  </span>
+                  {resume && (
+                    <span className="chiffres">
+                      <span className="text-muted-foreground">
+                        {t.accueil.colonnes.coute}
+                        {t.commun.deuxPoints}
+                      </span>
+                      {formaterMontant(resume.coutAujourdhui, base, 0)}
+                    </span>
+                  )}
+                  <Link
+                    href={`/paiement/${b.id}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {t.commun.voirDetail}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm(t.accueil.equipe.confirmerSuppression(b.nom)))
+                        return;
+                      maj({
+                        ...profil,
+                        beneficiaires: beneficiaires.filter(
+                          (x) => x.id !== b.id,
+                        ),
+                      });
+                    }}
+                    className="text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+                  >
+                    {t.commun.supprimer}
+                  </button>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      {beneficiaires.length > 0 && (
+        <div className="mt-6 flex flex-wrap items-baseline justify-between gap-4">
+          {complet && (
+            <p className="chiffres text-sm text-muted-foreground">
+              {t.accueil.totalMensuel(formaterMontant(totalMensuel, base, 0))}
+            </p>
+          )}
+          <Button variant="outline" onClick={() => setOuvert(true)}>
+            {t.accueil.equipe.ajouter}
+          </Button>
+        </div>
+      )}
+
+      {ouvert && (
+        <FormulaireBeneficiaire
+          onAnnuler={() => setOuvert(false)}
+          onAjouter={(b) => {
+            maj({ ...profil, beneficiaires: [...beneficiaires, b] });
+            setOuvert(false);
+          }}
+        />
+      )}
+
+      <p className="mt-12 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        {t.commun.fraisEstimes}
+      </p>
     </div>
+  );
+}
+
+function FormulaireBeneficiaire({
+  onAjouter,
+  onAnnuler,
+}: {
+  onAjouter: (b: Beneficiaire) => void;
+  onAnnuler: () => void;
+}) {
+  const t = useT();
+  const locale = localeActive();
+  const [nom, setNom] = useState("");
+  const [pays, setPays] = useState("US");
+  // La devise suit le pays tant que l'utilisateur ne l'a pas changée
+  // lui-même : beaucoup de gens sont payés dans une autre monnaie que celle
+  // de leur pays, mais c'est l'exception, pas le cas courant.
+  const [devise, setDevise] = useState<string | null>(null);
+  const [montant, setMontant] = useState("");
+  const [frequence, setFrequence] = useState<Frequence>("mensuelle");
+  const [type, setType] = useState<Beneficiaire["type"]>("contractant");
+  const [date, setDate] = useState(aujourdhuiISO());
+
+  const deviseEffective = devise ?? PAYS_DEVISE[pays] ?? "USD";
+  const paysTries = [...CODES_PAYS].sort((a, b) =>
+    nomPays(a, locale).localeCompare(nomPays(b, locale), locale),
+  );
+
+  return (
+    <form
+      className="mt-10 border-y border-border py-8"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onAjouter({
+          id: crypto.randomUUID(),
+          nom: nom.trim(),
+          pays,
+          devise: deviseEffective,
+          montant: Number(montant) || 0,
+          frequence,
+          type,
+          prochainPaiement: date,
+        });
+      }}
+    >
+      <h2 className="font-heading text-xl font-semibold">
+        {t.accueil.equipe.ajouter}
+      </h2>
+
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.nom}
+          </span>
+          <input
+            required
+            value={nom}
+            onChange={(e) => setNom(e.target.value)}
+            placeholder={t.accueil.equipe.nomExemple}
+            className={`${CLASSE_CHAMP} mt-1`}
+          />
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.pays}
+          </span>
+          <select
+            value={pays}
+            onChange={(e) => {
+              setPays(e.target.value);
+              setDevise(null);
+            }}
+            className={`${CLASSE_CHAMP} mt-1`}
+          >
+            {paysTries.map((code) => (
+              <option key={code} value={code}>
+                {nomPays(code, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.devise}
+          </span>
+          <input
+            value={deviseEffective}
+            onChange={(e) => setDevise(e.target.value.toUpperCase())}
+            maxLength={3}
+            className={`${CLASSE_CHAMP} mt-1 uppercase`}
+          />
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {t.accueil.equipe.deviseAuto}
+          </span>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.montant}
+          </span>
+          <input
+            required
+            inputMode="decimal"
+            value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+            className={`${CLASSE_CHAMP} chiffres mt-1`}
+          />
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {t.accueil.equipe.montantAide}
+          </span>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.frequence}
+          </span>
+          <select
+            value={frequence}
+            onChange={(e) => setFrequence(e.target.value as Frequence)}
+            className={`${CLASSE_CHAMP} mt-1`}
+          >
+            {FREQUENCES.map((f) => (
+              <option key={f} value={f}>
+                {t.accueil.frequences[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.type}
+          </span>
+          <select
+            value={type}
+            onChange={(e) =>
+              setType(e.target.value as Beneficiaire["type"])
+            }
+            className={`${CLASSE_CHAMP} mt-1`}
+          >
+            <option value="employe">{t.accueil.equipe.employe}</option>
+            <option value="contractant">{t.accueil.equipe.contractant}</option>
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-muted-foreground">
+            {t.accueil.equipe.prochainPaiement}
+          </span>
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={`${CLASSE_CHAMP} chiffres mt-1`}
+          />
+        </label>
+      </div>
+
+      <div className="mt-6 flex gap-3">
+        <Button type="submit">{t.commun.ajouter}</Button>
+        <Button type="button" variant="ghost" onClick={onAnnuler}>
+          {t.commun.annuler}
+        </Button>
+      </div>
+    </form>
   );
 }
