@@ -810,7 +810,7 @@ git commit -m "feat(journal): PaiementPasse et coût réel contre le taux de ré
 - Consumes: `coutReel`, `tauxAuPlusProche` (Task 3).
 - Produces: `LigneDevise`, `ResumePortefeuille`, `resumerPortefeuille(paiements: PaiementPasse[], series: Record<string, SerieTaux>): ResumePortefeuille`, `ImpactTaux`, `impactDuTaux(paiements: PaiementPasse[], serie: SerieTaux): ImpactTaux`, `CoutAttente`, `coutDeLAttente(p: PaiementPasse, serie: SerieTaux): CoutAttente | null`.
 
-**Pourquoi la moyenne de la période et non la moyenne des jours de paiement.** Pondérer par les volumes des paiements produirait un impact toujours positif : par convexité de `1/r`, `Σ mᵢ/rᵢ ≥ (Σ mᵢ)/r̄`. Ce serait un artefact mathématique, pas une observation. On compare donc au taux moyen **disponible sur la période**, ce qui peut sortir positif comme négatif — donc informatif.
+**Pourquoi la moyenne de toute la série et non des jours de paiement.** Pondérer par les volumes des paiements produirait un impact toujours positif : par convexité de `1/r`, `Σ mᵢ/rᵢ ≥ (Σ mᵢ)/r̄`. Restreindre la moyenne à l'intervalle entre le premier et le dernier paiement a le même défaut dès que les paiements sont rapprochés — vérifié sur la série de test : la mesure tombe à +0,01 dans les deux sens, contre −94 et +95 avec la moyenne complète. `impactDuTaux` moyenne donc **toute la série qu'il reçoit**, et c'est l'appelant qui décide de la période en découpant la série avant l'appel.
 
 - [ ] **Step 1 : écrire les tests qui échouent**
 
@@ -950,16 +950,18 @@ export function impactDuTaux(
 
   if (retenus.length === 0) return { tauxMoyen: 0, montant: 0, n: 0 };
 
-  // Moyenne des cours publiés sur l'intervalle réellement couvert, pas
-  // seulement sur les jours de paiement : c'est ce qui rend le signe informatif.
-  const debut = retenus.reduce((a, x) => (x.p.date < a ? x.p.date : a), retenus[0].p.date);
-  const fin = retenus.reduce((a, x) => (x.p.date > a ? x.p.date : a), retenus[0].p.date);
-  const fenetre = serie.valeurs.filter(
-    (_, i) => serie.dates[i] >= debut && serie.dates[i] <= fin,
-  );
-  const tauxMoyen = fenetre.length
-    ? fenetre.reduce((a, b) => a + b, 0) / fenetre.length
-    : retenus.reduce((a, x) => a + x.taux, 0) / retenus.length;
+  // Moyenne de TOUS les cours de la série reçue — pas seulement des jours de
+  // paiement, et pas non plus de l'intervalle entre le premier et le dernier.
+  //
+  // Restreindre la fenêtre aux dates des paiements fait s'effondrer la mesure :
+  // sur des paiements rapprochés la moyenne se confond avec les taux payés, et
+  // par convexité de 1/r le résultat devient positif quoi qu'il arrive — un
+  // artefact arithmétique présenté comme une observation. C'est l'appelant qui
+  // découpe la période de reporting avant d'appeler.
+  const tauxMoyen =
+    serie.valeurs.length > 0
+      ? serie.valeurs.reduce((a, b) => a + b, 0) / serie.valeurs.length
+      : retenus.reduce((a, x) => a + x.taux, 0) / retenus.length;
 
   const reel = retenus.reduce((a, x) => a + x.p.montantVoulu / x.taux, 0);
   const auMoyen =
