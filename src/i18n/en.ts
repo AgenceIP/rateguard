@@ -237,9 +237,9 @@ export const en: Traductions = {
     attente: {
       titre: "What waiting cost",
       coute: (jours: number, montant: string) =>
-        `${jours} days between knowing and paying: ${montant} more.`,
+        `${jours} day${jours > 1 ? "s" : ""} between knowing and paying: ${montant} more.`,
       rapporte: (jours: number, montant: string) =>
-        `${jours} days between knowing and paying: ${montant} less.`,
+        `${jours} day${jours > 1 ? "s" : ""} between knowing and paying: ${montant} less.`,
       note: "The rate could just as easily have gone the other way. That is called exposure, not a mistake.",
     },
   },
@@ -433,10 +433,10 @@ export const en: Traductions = {
     date: {
       titre: "Your date",
       exposition: (jours: number, montant: string) =>
-        `${jours} days of waiting, or about ${montant} of uncertainty on this payment.`,
+        `${jours} day${jours > 1 ? "s" : ""} of waiting, or about ${montant} of uncertainty on this payment.`,
       expositionCourte: "The payment is due today: there is no wait to price.",
       decalage: (prevue: string, reelle: string, jours: number) =>
-        `${prevue} is not a transfer day. The payment will leave on ${reelle}, ${jours} days later than you chose.`,
+        `${prevue} is not a transfer day. The payment will leave on ${reelle}, ${jours} day${jours > 1 ? "s" : ""} later than you chose.`,
       semaine: {
         titre: "This week of the month",
         agitee: (ratio: string) =>

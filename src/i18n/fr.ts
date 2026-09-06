@@ -246,9 +246,9 @@ export const fr = {
     attente: {
       titre: "Ce que l'attente a coûté",
       coute: (jours: number, montant: string) =>
-        `${jours} jours entre le moment où vous saviez et le versement : ${montant} de plus.`,
+        `${jours} jour${jours > 1 ? "s" : ""} entre le moment où vous saviez et le versement : ${montant} de plus.`,
       rapporte: (jours: number, montant: string) =>
-        `${jours} jours entre le moment où vous saviez et le versement : ${montant} de moins.`,
+        `${jours} jour${jours > 1 ? "s" : ""} entre le moment où vous saviez et le versement : ${montant} de moins.`,
       note: "Le taux aurait tout aussi bien pu partir dans l'autre sens. C'est ce qu'on appelle une exposition, pas une erreur.",
     },
   },
@@ -446,10 +446,10 @@ export const fr = {
     date: {
       titre: "Votre date",
       exposition: (jours: number, montant: string) =>
-        `${jours} jours d'attente, soit environ ${montant} d'incertitude sur ce paiement.`,
+        `${jours} jour${jours > 1 ? "s" : ""} d'attente, soit environ ${montant} d'incertitude sur ce paiement.`,
       expositionCourte: "Le paiement est dû aujourd'hui : aucune attente à chiffrer.",
       decalage: (prevue: string, reelle: string, jours: number) =>
-        `Le ${prevue} n'est pas un jour de virement. Le paiement partira le ${reelle}, soit ${jours} jours de plus que vous n'avez pas choisis.`,
+        `Le ${prevue} n'est pas un jour de virement. Le paiement partira le ${reelle}, soit ${jours} jour${jours > 1 ? "s" : ""} de plus que vous n'avez pas choisis.`,
       semaine: {
         titre: "Cette semaine du mois",
         agitee: (ratio: string) =>
