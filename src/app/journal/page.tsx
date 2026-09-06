@@ -73,7 +73,9 @@ export default function Journal() {
                     {formaterMontant(p.montantEnvoye, p.deviseBase)}
                   </span>
                   {" · "}
-                  {t.journal.colonnes.recu}
+                  {p.montantRecu === null
+                    ? t.journal.colonnes.voulu
+                    : t.journal.colonnes.recu}
                   {t.commun.deuxPoints}
                   <span className="chiffres">
                     {formaterMontant(p.montantRecu ?? p.montantVoulu, p.devise)}
@@ -84,9 +86,13 @@ export default function Journal() {
                   {!cout
                     ? t.journal.ecart.sansTaux
                     : cout.ecart < 0
-                      ? t.journal.ecart.gain(
-                          formaterMontant(-cout.ecart, p.deviseBase, 0),
-                        )
+                      ? cout.complet
+                        ? t.journal.ecart.gain(
+                            formaterMontant(-cout.ecart, p.deviseBase, 0),
+                          )
+                        : t.journal.ecart.gainPartiel(
+                            formaterMontant(-cout.ecart, p.deviseBase, 0),
+                          )
                       : cout.complet
                         ? t.journal.ecart.complet(
                             formaterMontant(cout.ecart, p.deviseBase, 0),
@@ -164,7 +170,11 @@ function Formulaire({
   const [reference, setReference] = useState("");
   const [canal, setCanal] = useState<CanalPaiement>("spot");
 
-  const valide = nom.trim() && Number(envoye) > 0 && Number(voulu) > 0;
+  const valide =
+    nom.trim() &&
+    Number(envoye) > 0 &&
+    Number(voulu) > 0 &&
+    devise.trim().length === 3;
 
   return (
     <form
@@ -237,6 +247,7 @@ function Formulaire({
               onChange={(e) => setDevise(e.target.value)}
               maxLength={3}
               required
+              aria-label={t.journal.champs.devise}
             />
           </div>
         </Champ>

@@ -207,6 +207,7 @@ export const fr = {
       beneficiaire: "Bénéficiaire",
       envoye: "Débité",
       recu: "Reçu",
+      voulu: "Voulu",
       canal: "Par",
       ecart: "Ce que ça a coûté",
     },
@@ -223,6 +224,7 @@ export const fr = {
       dateAide: "Le jour où l'argent est sorti de votre compte.",
       montantEnvoye: "Montant débité de votre compte",
       montantVoulu: "Montant que vous vouliez lui faire parvenir",
+      devise: "Devise du bénéficiaire",
       montantRecu: "Montant réellement reçu",
       montantRecuAide:
         "Optionnel, mais c'est le champ qui compte : sans lui, on ne peut pas voir ce que les banques du trajet ont prélevé. Demandez-le à la personne payée.",
@@ -239,8 +241,10 @@ export const fr = {
       complet: (montant: string, pct: string) =>
         `${montant} de plus que le taux de référence (${pct})`,
       partiel: (montant: string, pct: string) =>
-        `au moins ${montant} de plus que le taux de référence (${pct})`,
+        `au moins ${montant} de plus que le taux de référence (au moins ${pct})`,
       gain: (montant: string) => `${montant} de moins que le taux de référence`,
+      gainPartiel: (montant: string) =>
+        `au plus ${montant} de moins que le taux de référence`,
       sansTaux: "Taux de référence indisponible à cette date",
     },
     attente: {

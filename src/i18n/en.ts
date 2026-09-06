@@ -198,6 +198,7 @@ export const en: Traductions = {
       beneficiaire: "Paid to",
       envoye: "Debited",
       recu: "Received",
+      voulu: "Intended",
       canal: "Via",
       ecart: "What it cost",
     },
@@ -214,6 +215,7 @@ export const en: Traductions = {
       dateAide: "The day the money left your account.",
       montantEnvoye: "Amount debited from your account",
       montantVoulu: "Amount you wanted them to receive",
+      devise: "Recipient currency",
       montantRecu: "Amount actually received",
       montantRecuAide:
         "Optional, but this is the field that matters: without it, there is no way to see what the banks along the way took. Ask the person you paid.",
@@ -230,8 +232,10 @@ export const en: Traductions = {
       complet: (montant: string, pct: string) =>
         `${montant} more than the reference rate (${pct})`,
       partiel: (montant: string, pct: string) =>
-        `at least ${montant} more than the reference rate (${pct})`,
+        `at least ${montant} more than the reference rate (at least ${pct})`,
       gain: (montant: string) => `${montant} less than the reference rate`,
+      gainPartiel: (montant: string) =>
+        `at most ${montant} less than the reference rate`,
       sansTaux: "No reference rate available for that date",
     },
     attente: {
