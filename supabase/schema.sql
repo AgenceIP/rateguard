@@ -56,6 +56,37 @@ create table if not exists decisions (
 
 create index if not exists decisions_espace_idx on decisions (espace, cree_le desc);
 
+-- Paiements déjà exécutés, saisis à la main depuis un relevé bancaire.
+--
+-- C'est la table qui fait passer l'outil de l'estimation à la mesure : une
+-- fois trois lignes présentes sur un corridor, le comparateur cesse d'utiliser
+-- ses ordres de grandeur publics et se calibre sur ces chiffres-là.
+--
+-- montant_recu et date_reference sont nullables et le restent : le premier
+-- débloque le coût tout compris, le second le coût de l'attente. Les rendre
+-- obligatoires empêcherait de saisir un paiement dont on n'a pas tout retrouvé,
+-- et une ligne partielle vaut mieux qu'une ligne absente.
+create table if not exists paiements_passes (
+  id               uuid primary key default gen_random_uuid(),
+  espace           text not null references profils (espace) on delete cascade,
+  beneficiaire_id  uuid references beneficiaires (id) on delete set null,
+  beneficiaire_nom text not null,
+  date             date not null,
+  devise_base      text not null,
+  montant_envoye   numeric(14, 2) not null check (montant_envoye > 0),
+  devise           text not null,
+  montant_voulu    numeric(14, 2) not null check (montant_voulu > 0),
+  montant_recu     numeric(14, 2) check (montant_recu >= 0),
+  frais_affiches   numeric(14, 2) check (frais_affiches >= 0),
+  canal            text not null,
+  date_reference   date,
+  note             text not null default '',
+  cree_le          timestamptz not null default now()
+);
+
+create index if not exists paiements_passes_espace_idx
+  on paiements_passes (espace, date desc);
+
 -- RLS activée avec un accès par espace.
 --
 -- Postgres ne connaît pas « create policy if not exists » : les politiques sont
@@ -67,9 +98,10 @@ create index if not exists decisions_espace_idx on decisions (espace, cree_le de
 -- attaquant qui connaîtrait déjà un identifiant. C'est un compromis assumé
 -- pour un outil sans compte utilisateur ; passer à Supabase Auth est le
 -- chemin de sortie si l'outil devait porter des données sensibles.
-alter table profils        enable row level security;
-alter table beneficiaires  enable row level security;
-alter table decisions      enable row level security;
+alter table profils             enable row level security;
+alter table beneficiaires       enable row level security;
+alter table decisions           enable row level security;
+alter table paiements_passes    enable row level security;
 
 drop policy if exists profils_espace on profils;
 create policy profils_espace on profils
@@ -83,5 +115,10 @@ create policy beneficiaires_espace on beneficiaires
 
 drop policy if exists decisions_espace on decisions;
 create policy decisions_espace on decisions
+  for all using (espace = current_setting('request.headers', true)::json ->> 'x-espace')
+  with check (espace = current_setting('request.headers', true)::json ->> 'x-espace');
+
+drop policy if exists paiements_passes_espace on paiements_passes;
+create policy paiements_passes_espace on paiements_passes
   for all using (espace = current_setting('request.headers', true)::json ->> 'x-espace')
   with check (espace = current_setting('request.headers', true)::json ->> 'x-espace');

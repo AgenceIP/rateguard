@@ -3,7 +3,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { HYPOTHESES_DEFAUT } from "./hypotheses";
-import type { Beneficiaire, Hypotheses, Profil } from "./types";
+import type { Beneficiaire, Hypotheses, PaiementPasse, Profil } from "./types";
 
 /**
  * Persistance — Supabase quand il est configuré, localStorage sinon.
@@ -22,6 +22,7 @@ import type { Beneficiaire, Hypotheses, Profil } from "./types";
 const CLE_PROFIL = "rateguard.profil.v2";
 const CLE_DECISIONS = "rateguard.decisions.v2";
 const CLE_ESPACE = "rateguard.espace.v1";
+const CLE_JOURNAL = "rateguard.journal.v1";
 
 /**
  * Identifiant d'espace, opaque et local. Il n'y a pas de compte utilisateur :
@@ -222,4 +223,85 @@ export async function enregistrerDecision(
     date_taux: decision.dateTaux,
     cout_estime: decision.coutEstime,
   });
+}
+
+/**
+ * Journal des paiements passés.
+ *
+ * Trié du plus récent au plus ancien des deux côtés, pour que l'écran n'ait
+ * jamais à savoir lequel des deux stockages a répondu.
+ */
+export async function lireJournal(): Promise<PaiementPasse[]> {
+  const sb = supabase();
+  if (!sb) {
+    return lireLocal<PaiementPasse[]>(CLE_JOURNAL, []).sort((a, b) =>
+      b.date.localeCompare(a.date),
+    );
+  }
+
+  const { data, error } = await sb
+    .from("paiements_passes")
+    .select("*")
+    .eq("espace", espace())
+    .order("date", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map((l) => ({
+    id: l.id as string,
+    beneficiaireId: (l.beneficiaire_id as string | null) ?? null,
+    beneficiaireNom: l.beneficiaire_nom as string,
+    date: l.date as string,
+    deviseBase: l.devise_base as string,
+    montantEnvoye: Number(l.montant_envoye),
+    devise: l.devise as string,
+    montantVoulu: Number(l.montant_voulu),
+    montantRecu: l.montant_recu === null ? null : Number(l.montant_recu),
+    fraisAffiches: l.frais_affiches === null ? null : Number(l.frais_affiches),
+    canal: l.canal as PaiementPasse["canal"],
+    dateReference: (l.date_reference as string | null) ?? null,
+    note: (l.note as string) ?? "",
+  }));
+}
+
+export async function enregistrerPaiement(
+  p: Omit<PaiementPasse, "id">,
+): Promise<void> {
+  const sb = supabase();
+  if (!sb) {
+    const existants = lireLocal<PaiementPasse[]>(CLE_JOURNAL, []);
+    const ligne: PaiementPasse = { ...p, id: crypto.randomUUID() };
+    window.localStorage.setItem(
+      CLE_JOURNAL,
+      JSON.stringify([ligne, ...existants]),
+    );
+    return;
+  }
+
+  await sb.from("paiements_passes").insert({
+    espace: espace(),
+    beneficiaire_id: p.beneficiaireId,
+    beneficiaire_nom: p.beneficiaireNom,
+    date: p.date,
+    devise_base: p.deviseBase,
+    montant_envoye: p.montantEnvoye,
+    devise: p.devise,
+    montant_voulu: p.montantVoulu,
+    montant_recu: p.montantRecu,
+    frais_affiches: p.fraisAffiches,
+    canal: p.canal,
+    date_reference: p.dateReference,
+    note: p.note,
+  });
+}
+
+export async function supprimerPaiement(id: string): Promise<void> {
+  const sb = supabase();
+  if (!sb) {
+    const restants = lireLocal<PaiementPasse[]>(CLE_JOURNAL, []).filter(
+      (p) => p.id !== id,
+    );
+    window.localStorage.setItem(CLE_JOURNAL, JSON.stringify(restants));
+    return;
+  }
+  await sb.from("paiements_passes").delete().eq("espace", espace()).eq("id", id);
 }
