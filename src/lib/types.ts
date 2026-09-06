@@ -183,3 +183,45 @@ export interface FicheCrypto {
   /** Date ISO de la dernière vérification humaine de cette fiche. */
   verifieLe: string;
 }
+
+/**
+ * Canal réellement emprunté par un paiement passé. `autre` existe parce que
+ * l'utilisateur a pu passer par un chemin que le comparateur ne modélise pas,
+ * et qu'une liste fermée le pousserait à mentir pour pouvoir enregistrer.
+ */
+export type CanalPaiement = CleStrategie | "autre";
+
+/**
+ * Un paiement déjà exécuté, saisi à la main depuis un relevé bancaire.
+ *
+ * On ne demande que ce qui se lit sur un relevé. Les deux champs nullables
+ * ne sont pas des options de confort : `montantRecu` débloque le coût TOUT
+ * COMPRIS (il capture les prélèvements des banques correspondantes, invisibles
+ * autrement), `dateReference` débloque le coût de l'attente. L'interface doit
+ * dire ce que chacun débloque, pas se contenter de les marquer « optionnel ».
+ */
+export interface PaiementPasse {
+  id: string;
+  /** Fiche rattachée, ou null : le journal survit à la suppression d'une fiche. */
+  beneficiaireId: string | null;
+  /** Toujours stocké en clair pour que la ligne reste lisible sans la fiche. */
+  beneficiaireNom: string;
+  /** Date ISO d'exécution — le jour où l'argent est parti. */
+  date: string;
+  /** ISO 4217 de la devise de base au moment du paiement. */
+  deviseBase: string;
+  /** Ce qui a été débité, en devise de base. */
+  montantEnvoye: number;
+  /** ISO 4217 de la devise cible. */
+  devise: string;
+  /** Ce qu'on voulait faire parvenir, en devise cible. */
+  montantVoulu: number;
+  /** Ce qui est réellement arrivé, en devise cible. null si non confirmé. */
+  montantRecu: number | null;
+  /** Ligne de frais visible au relevé, en devise de base. Appoint pédagogique. */
+  fraisAffiches: number | null;
+  canal: CanalPaiement;
+  /** Date ISO où le montant était connu (facture, début de période). */
+  dateReference: string | null;
+  note: string;
+}
