@@ -166,7 +166,12 @@ export interface ResumePortefeuille {
   fraisPct: number;
   impactTaux: number;
   devises: LigneDevise[];
-  /** Paiements écartés faute de série pour leur devise. Affiché, jamais masqué. */
+  /**
+   * Paiements écartés : soit aucune série ne couvre leur devise, soit aucun
+   * cours n'est publié à leur date ou avant. Dans les deux cas on préfère les
+   * retirer du total et le dire, plutôt que leur inventer un taux. Affiché,
+   * jamais masqué.
+   */
   ignores: number;
 }
 
