@@ -28,6 +28,7 @@ export const fr = {
 
   nav: {
     accueil: "Paiements",
+    journal: "Journal",
     donnees: "D'où viennent les données",
     conformite: "Conformité",
   },
@@ -161,6 +162,97 @@ export const fr = {
       `Environ ${montant} par mois en paiements internationaux, frais compris.`,
   },
 
+  portefeuille: {
+    titre: "Votre portefeuille",
+    periode: "12 derniers mois",
+    intro:
+      "Ce que vos paiements internationaux vous ont réellement coûté, mesuré sur les paiements que vous avez saisis. Les frais et l'effet du taux sont séparés parce qu'ils ne se pilotent pas de la même façon : les frais se choisissent, le taux ne se choisit pas — seule votre exposition se choisit.",
+    volume: "Payé à l'étranger",
+    volumeDetail: (n: number) => (n === 1 ? "1 paiement" : `${n} paiements`),
+    frais: "Frais et marges",
+    fraisDetail: (pct: string) => `${pct} du volume`,
+    fraisAide:
+      "Tout ce que la chaîne a prélevé : la marge cachée dans le taux, les frais fixes et les prélèvements des banques du trajet.",
+    impact: "Effet du calendrier",
+    impactDetail: "par rapport au taux moyen de la période",
+    impactAide:
+      "Ce que la répartition de vos versements dans le temps a coûté ou rapporté, comparée au taux moyen disponible sur la période. C'est un constat sur le passé : personne ne peut savoir à l'avance quelle date sera la bonne.",
+    incomplet:
+      "Certains paiements n'ont pas de montant reçu. Leur coût réel est donc au moins celui affiché, jamais moins.",
+    ignores: (n: number) =>
+      n === 1
+        ? "1 paiement est écarté du calcul : la Banque centrale européenne ne publie pas sa devise."
+        : `${n} paiements sont écartés du calcul : la Banque centrale européenne ne publie pas leur devise.`,
+    vide: {
+      titre: "Rien à mesurer pour l'instant",
+      corps:
+        "Saisissez vos paiements déjà effectués et RateGuard cessera d'estimer : il mesurera. Trois paiements sur un même trajet suffisent pour que le comparateur se calibre sur votre banque plutôt que sur des ordres de grandeur publics.",
+      action: "Saisir un paiement passé",
+    },
+    parDevise: "Par devise",
+    aPayer: "À payer bientôt",
+  },
+
+  journal: {
+    titre: "Vos paiements passés",
+    intro:
+      "Ce que vous avez réellement payé, comparé au taux de référence du jour même. C'est ici que se lit la réponse à « est-ce que j'ai économisé » : vos virements de janvier en face de ceux d'août.",
+    vide: "Aucun paiement enregistré. Le premier suffit pour commencer à mesurer.",
+    ajouter: "Ajouter un paiement",
+    annuler: "Annuler",
+    enregistrer: "Enregistrer",
+    supprimer: "Retirer",
+    colonnes: {
+      date: "Date",
+      beneficiaire: "Bénéficiaire",
+      envoye: "Débité",
+      recu: "Reçu",
+      canal: "Par",
+      ecart: "Ce que ça a coûté",
+    },
+    canaux: {
+      spot: "Virement bancaire",
+      forward: "Taux figé à l'avance",
+      etalement: "Plusieurs versements",
+      multidevise: "Compte multi-devises",
+      autre: "Autre",
+    },
+    champs: {
+      beneficiaire: "Qui avez-vous payé",
+      date: "Date du paiement",
+      dateAide: "Le jour où l'argent est sorti de votre compte.",
+      montantEnvoye: "Montant débité de votre compte",
+      montantVoulu: "Montant que vous vouliez lui faire parvenir",
+      montantRecu: "Montant réellement reçu",
+      montantRecuAide:
+        "Optionnel, mais c'est le champ qui compte : sans lui, on ne peut pas voir ce que les banques du trajet ont prélevé. Demandez-le à la personne payée.",
+      fraisAffiches: "Frais facturés sur votre relevé",
+      fraisAffichesAide:
+        "Optionnel. La ligne de frais visible, si votre banque en affiche une.",
+      dateReference: "Date à laquelle vous saviez que vous deviez ce montant",
+      dateReferenceAide:
+        "Optionnel — date de la facture, ou début de la période de paie. La remplir permet de chiffrer ce que l'attente vous a coûté.",
+      canal: "Comment avez-vous payé",
+      note: "Note",
+    },
+    ecart: {
+      complet: (montant: string, pct: string) =>
+        `${montant} de plus que le taux de référence (${pct})`,
+      partiel: (montant: string, pct: string) =>
+        `au moins ${montant} de plus que le taux de référence (${pct})`,
+      gain: (montant: string) => `${montant} de moins que le taux de référence`,
+      sansTaux: "Taux de référence indisponible à cette date",
+    },
+    attente: {
+      titre: "Ce que l'attente a coûté",
+      coute: (jours: number, montant: string) =>
+        `${jours} jours entre le moment où vous saviez et le versement : ${montant} de plus.`,
+      rapporte: (jours: number, montant: string) =>
+        `${jours} jours entre le moment où vous saviez et le versement : ${montant} de moins.`,
+      note: "Le taux aurait tout aussi bien pu partir dans l'autre sens. C'est ce qu'on appelle une exposition, pas une erreur.",
+    },
+  },
+
   paiement: {
     retour: "Retour aux paiements",
     sousTitre: (montant: string, pays: string, quand: string) =>
@@ -244,6 +336,10 @@ export const fr = {
       central: (montant: string) => `environ ${montant}`,
       transferts: (n: number) => `${n} transferts`,
       detailFrais: "Détail des frais",
+      moinsChere: "La moins chère aujourd'hui",
+      incertainCourt: "Une fourchette",
+      deplier: "Voir le détail",
+      replier: "Masquer le détail",
 
       spot: {
         nom: "Virement bancaire aujourd'hui",
@@ -329,6 +425,44 @@ export const fr = {
       sourcesTitre: "Sources consultées",
       avertissement:
         "Ceci n'est pas un avis juridique. Vérifiez avec un comptable ou un avocat du pays concerné avant de verser un salaire en cryptomonnaie.",
+    },
+
+    vosChiffres: {
+      titre: "Vos chiffres",
+      mesure: (n: number, paire: string) =>
+        `Mesuré sur vos ${n} derniers paiements ${paire}.`,
+      defaut:
+        "Estimations, tant que vous n'avez pas saisi de paiements passés sur ce trajet.",
+      pourAffiner: (manquants: number) =>
+        manquants === 1
+          ? "Encore 1 paiement enregistré sur ce trajet et ces chiffres deviendront des mesures."
+          : `Encore ${manquants} paiements enregistrés sur ce trajet et ces chiffres deviendront des mesures.`,
+      marge: "Marge dans le taux",
+      fraisFixes: "Frais fixes",
+      ajuster: "Ajuster",
+      fermer: "Terminer",
+    },
+
+    date: {
+      titre: "Votre date",
+      exposition: (jours: number, montant: string) =>
+        `${jours} jours d'attente, soit environ ${montant} d'incertitude sur ce paiement.`,
+      expositionCourte: "Le paiement est dû aujourd'hui : aucune attente à chiffrer.",
+      decalage: (prevue: string, reelle: string, jours: number) =>
+        `Le ${prevue} n'est pas un jour de virement. Le paiement partira le ${reelle}, soit ${jours} jours de plus que vous n'avez pas choisis.`,
+      semaine: {
+        titre: "Cette semaine du mois",
+        agitee: (ratio: string) =>
+          `Sur trois ans, cette semaine du mois a bougé ${ratio} fois plus qu'une semaine ordinaire pour cette paire. Plus de mouvement veut dire plus d'incertitude — dans les deux sens.`,
+        calme: (ratio: string) =>
+          `Sur trois ans, cette semaine du mois a bougé ${ratio} fois moins qu'une semaine ordinaire pour cette paire.`,
+        indistincte:
+          "Aucune semaine du mois ne se distingue nettement des autres pour cette paire. C'est le cas le plus fréquent, et c'est une information : votre date de versement ne change pas grand-chose à votre incertitude.",
+        insuffisant:
+          "Pas assez d'historique sur cette paire pour comparer les semaines entre elles.",
+      },
+      nonPrediction:
+        "RateGuard ne vous dira jamais quelle semaine donnera un meilleur taux — sur quelques semaines, la direction d'un taux de change n'est pas prévisible, et prétendre le contraire serait vous mentir. Ce qui se mesure, et que vous voyez ici, c'est de combien ça bouge.",
     },
 
     hypotheses: {

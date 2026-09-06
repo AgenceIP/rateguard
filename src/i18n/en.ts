@@ -24,6 +24,7 @@ export const en: Traductions = {
 
   nav: {
     accueil: "Payments",
+    journal: "Ledger",
     donnees: "Where the data comes from",
     conformite: "Compliance",
   },
@@ -152,6 +153,97 @@ export const en: Traductions = {
       `About ${montant} a month in international payments, fees included.`,
   },
 
+  portefeuille: {
+    titre: "Your portfolio",
+    periode: "Last 12 months",
+    intro:
+      "What your international payments actually cost, measured on the payments you entered. Fees and rate effect are shown separately because you steer them differently: you choose your fees, you don't choose the rate — you only choose your exposure.",
+    volume: "Paid abroad",
+    volumeDetail: (n: number) => (n === 1 ? "1 payment" : `${n} payments`),
+    frais: "Fees and margins",
+    fraisDetail: (pct: string) => `${pct} of volume`,
+    fraisAide:
+      "Everything the chain took: the margin hidden in the rate, the fixed fees, and the deductions made by banks along the way.",
+    impact: "Timing effect",
+    impactDetail: "against the period's average rate",
+    impactAide:
+      "What the spread of your payments over time cost or earned, compared with the average rate available during the period. It describes the past: nobody can know in advance which date will turn out well.",
+    incomplet:
+      "Some payments have no received amount. Their real cost is therefore at least the figure shown, never less.",
+    ignores: (n: number) =>
+      n === 1
+        ? "1 payment is left out of the calculation: the European Central Bank does not publish its currency."
+        : `${n} payments are left out of the calculation: the European Central Bank does not publish their currency.`,
+    vide: {
+      titre: "Nothing to measure yet",
+      corps:
+        "Enter payments you have already made and RateGuard will stop estimating: it will measure. Three payments along the same route are enough for the comparison to calibrate on your bank rather than on public orders of magnitude.",
+      action: "Enter a past payment",
+    },
+    parDevise: "By currency",
+    aPayer: "Due soon",
+  },
+
+  journal: {
+    titre: "Your past payments",
+    intro:
+      "What you actually paid, against the reference rate of that same day. This is where you read the answer to \"did I save anything\": your January transfers next to your August ones.",
+    vide: "No payment recorded yet. The first one is enough to start measuring.",
+    ajouter: "Add a payment",
+    annuler: "Cancel",
+    enregistrer: "Save",
+    supprimer: "Remove",
+    colonnes: {
+      date: "Date",
+      beneficiaire: "Paid to",
+      envoye: "Debited",
+      recu: "Received",
+      canal: "Via",
+      ecart: "What it cost",
+    },
+    canaux: {
+      spot: "Bank wire",
+      forward: "Rate locked in advance",
+      etalement: "Several transfers",
+      multidevise: "Multi-currency account",
+      autre: "Other",
+    },
+    champs: {
+      beneficiaire: "Who did you pay",
+      date: "Payment date",
+      dateAide: "The day the money left your account.",
+      montantEnvoye: "Amount debited from your account",
+      montantVoulu: "Amount you wanted them to receive",
+      montantRecu: "Amount actually received",
+      montantRecuAide:
+        "Optional, but this is the field that matters: without it, there is no way to see what the banks along the way took. Ask the person you paid.",
+      fraisAffiches: "Fees charged on your statement",
+      fraisAffichesAide:
+        "Optional. The visible fee line, if your bank shows one.",
+      dateReference: "Date you knew you owed this amount",
+      dateReferenceAide:
+        "Optional — invoice date, or start of the pay period. Filling it in lets us price what waiting cost you.",
+      canal: "How did you pay",
+      note: "Note",
+    },
+    ecart: {
+      complet: (montant: string, pct: string) =>
+        `${montant} more than the reference rate (${pct})`,
+      partiel: (montant: string, pct: string) =>
+        `at least ${montant} more than the reference rate (${pct})`,
+      gain: (montant: string) => `${montant} less than the reference rate`,
+      sansTaux: "No reference rate available for that date",
+    },
+    attente: {
+      titre: "What waiting cost",
+      coute: (jours: number, montant: string) =>
+        `${jours} days between knowing and paying: ${montant} more.`,
+      rapporte: (jours: number, montant: string) =>
+        `${jours} days between knowing and paying: ${montant} less.`,
+      note: "The rate could just as easily have gone the other way. That is called exposure, not a mistake.",
+    },
+  },
+
   paiement: {
     retour: "Back to payments",
     sousTitre: (montant: string, pays: string, quand: string) =>
@@ -232,6 +324,10 @@ export const en: Traductions = {
       central: (montant: string) => `about ${montant}`,
       transferts: (n: number) => `${n} transfers`,
       detailFrais: "Fee breakdown",
+      moinsChere: "Cheapest today",
+      incertainCourt: "A range",
+      deplier: "See the detail",
+      replier: "Hide the detail",
 
       spot: {
         nom: "Bank wire today",
@@ -316,6 +412,44 @@ export const en: Traductions = {
       sourcesTitre: "Sources consulted",
       avertissement:
         "This is not legal advice. Check with an accountant or a lawyer in the country concerned before paying a salary in cryptocurrency.",
+    },
+
+    vosChiffres: {
+      titre: "Your numbers",
+      mesure: (n: number, paire: string) =>
+        `Measured on your last ${n} ${paire} payments.`,
+      defaut:
+        "Estimates, until you enter past payments along this route.",
+      pourAffiner: (manquants: number) =>
+        manquants === 1
+          ? "One more payment recorded along this route and these figures become measurements."
+          : `${manquants} more payments recorded along this route and these figures become measurements.`,
+      marge: "Margin in the rate",
+      fraisFixes: "Fixed fees",
+      ajuster: "Adjust",
+      fermer: "Done",
+    },
+
+    date: {
+      titre: "Your date",
+      exposition: (jours: number, montant: string) =>
+        `${jours} days of waiting, or about ${montant} of uncertainty on this payment.`,
+      expositionCourte: "The payment is due today: there is no wait to price.",
+      decalage: (prevue: string, reelle: string, jours: number) =>
+        `${prevue} is not a transfer day. The payment will leave on ${reelle}, ${jours} days later than you chose.`,
+      semaine: {
+        titre: "This week of the month",
+        agitee: (ratio: string) =>
+          `Over three years, this week of the month moved ${ratio} times more than an ordinary week for this pair. More movement means more uncertainty — in both directions.`,
+        calme: (ratio: string) =>
+          `Over three years, this week of the month moved ${ratio} times less than an ordinary week for this pair.`,
+        indistincte:
+          "No week of the month stands out clearly from the others for this pair. That is the most common case, and it is information: your payment date does not change your uncertainty much.",
+        insuffisant:
+          "Not enough history on this pair to compare weeks against each other.",
+      },
+      nonPrediction:
+        "RateGuard will never tell you which week will give a better rate — over a few weeks the direction of an exchange rate is not predictable, and pretending otherwise would be lying to you. What can be measured, and what you see here, is how much it moves.",
     },
 
     hypotheses: {

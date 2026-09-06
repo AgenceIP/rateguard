@@ -67,6 +67,12 @@ export function EnTete() {
             {t.nav.accueil}
           </Link>
           <Link
+            href="/journal"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t.nav.journal}
+          </Link>
+          <Link
             href="/donnees"
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
