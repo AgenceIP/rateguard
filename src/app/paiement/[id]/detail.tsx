@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Comparateur } from "@/components/comparateur";
+import { DatePaiement } from "@/components/date-paiement";
 import { Terme } from "@/components/lexique";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,12 +24,14 @@ import {
   joursAvant,
   localeActive,
 } from "@/lib/format";
-import { useMarches } from "@/lib/marche";
+import { hypothesesCalibrees, margeObservee } from "@/lib/journal";
+import { derniersJours, JOURS_STATISTIQUES, useMarches } from "@/lib/marche";
 import { comparerStrategies, resumerPaiement } from "@/lib/strategies";
 import {
   enregistrerDecision,
   enregistrerProfil,
   lireDecisions,
+  lireJournal,
   lireProfil,
   type Decision,
 } from "@/lib/stockage";
@@ -36,6 +40,7 @@ import {
   type CleStrategie,
   type CoutStrategie,
   type Hypotheses,
+  type PaiementPasse,
   type Profil,
   type StatsVolatilite,
   type StatutCrypto,
@@ -59,10 +64,13 @@ export function DetailPaiement({ id }: { id: string }) {
   const { langue } = useLangue();
   const [profil, setProfil] = useState<Profil | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [journal, setJournal] = useState<PaiementPasse[]>([]);
+  const [ouvertChiffres, setOuvertChiffres] = useState(false);
 
   useEffect(() => {
     void lireProfil().then(setProfil);
     void lireDecisions().then(setDecisions);
+    void lireJournal().then(setJournal);
   }, []);
 
   const beneficiaire = profil?.beneficiaires.find((b) => b.id === id) ?? null;
@@ -96,27 +104,33 @@ export function DetailPaiement({ id }: { id: string }) {
   const fenetre = JOURS_PAR_FREQUENCE[b.frequence];
   const paiementsParMois = 30 / fenetre;
 
-  const stats: StatsVolatilite | null =
-    marche?.serie && marche.taux ? calculerVolatilite(marche.serie, fenetre) : null;
+  // Fenêtre longue (trois ans) pour le calendrier, fenêtre courte (un an,
+  // JOURS_STATISTIQUES) pour les statistiques d'amplitude de cette page :
+  // les deux mesurent des choses différentes et ne doivent pas se mélanger.
+  const serie3ans = marche?.serie ?? null;
+  const serieStats = serie3ans ? derniersJours(serie3ans, JOURS_STATISTIQUES) : null;
+  const stats: StatsVolatilite | null = serieStats
+    ? calculerVolatilite(serieStats, fenetre)
+    : null;
+
+  // La marge mesurée sur les paiements passés de l'utilisateur remplace,
+  // quand elle existe, la marge estimée par défaut — voir hypothesesCalibrees.
+  const marge =
+    serie3ans && marche?.taux
+      ? margeObservee(journal, serie3ans, b.devise, "spot")
+      : null;
+  const hypotheses =
+    marge && marche?.taux
+      ? hypothesesCalibrees(profil.hypotheses, marge, b.montant / marche.taux)
+      : profil.hypotheses;
+
   const strategies: CoutStrategie[] =
     marche?.taux && stats
-      ? comparerStrategies(
-          b.montant,
-          marche.taux,
-          stats,
-          profil.hypotheses,
-          paiementsParMois,
-        )
+      ? comparerStrategies(b.montant, marche.taux, stats, hypotheses, paiementsParMois)
       : [];
   const resume =
     marche?.taux && stats
-      ? resumerPaiement(
-          b.montant,
-          marche.taux,
-          stats,
-          profil.hypotheses,
-          paiementsParMois,
-        )
+      ? resumerPaiement(b.montant, marche.taux, stats, hypotheses, paiementsParMois)
       : null;
 
   const montant = formaterMontant(b.montant, b.devise, 0);
@@ -133,385 +147,497 @@ export function DetailPaiement({ id }: { id: string }) {
     void enregistrerProfil(suivant);
   }
 
+  function noter(cle: CleStrategie) {
+    if (!marche?.taux) return;
+    const s = strategies.find((x) => x.cle === cle);
+    if (!s) return;
+    void enregistrerDecision({
+      beneficiaireId: b.id,
+      beneficiaireNom: b.nom,
+      strategie: s.cle,
+      deviseBase: base,
+      deviseCible: b.devise,
+      montantCible: b.montant,
+      taux: marche.taux,
+      dateTaux: marche.dateTaux,
+      coutEstime: s.coutCentral,
+    }).then(() => lireDecisions().then(setDecisions));
+  }
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-12">
-      <Link
-        href="/"
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        ← {t.paiement.retour}
-      </Link>
+    <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      <div>
+        {/* ---------------------------------------------------------- En-tête */}
+        <Link
+          href="/"
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          ← {t.paiement.retour}
+        </Link>
 
-      <h1 className="mt-6 font-heading text-3xl font-semibold tracking-tight">
-        {b.nom}
-      </h1>
-      <p className="mt-2 text-muted-foreground">
-        {t.paiement.sousTitre(montant, nomPays(b.pays, locale), quand)}
-      </p>
-
-      {/* Le résumé est l'objet central de la page : c'est la seule surface ornée. */}
-      <section className="recu mt-10 rounded-md bg-card p-8">
-        <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {t.paiement.resume.titre}
-        </h2>
-        <p className="mt-4 max-w-3xl text-xl leading-relaxed">
-          {resume
-            ? !resume.suffisant
-              ? t.paiement.resume.sansRisque(montant, quand)
-              : resume.risque === 0
-                ? t.paiement.resume.ancree(montant, b.devise)
-                : resume.prixDeLaCertitude > 0
-                  ? t.paiement.resume.avecRisque(
-                      montant,
-                      quand,
-                      formaterMontant(resume.risque, base, 0),
-                      formaterMontant(resume.prixDeLaCertitude, base, 0),
-                    )
-                  : t.paiement.resume.certitudeMoinsChere(
-                      montant,
-                      quand,
-                      formaterMontant(resume.risque, base, 0),
-                      formaterMontant(-resume.prixDeLaCertitude, base, 0),
-                    )
-            : marche?.motif
-              ? motifEnClair(t, marche.motif, b.devise)
-              : t.commun.chargement}
+        <h1 className="mt-6 font-heading text-3xl font-semibold tracking-tight">
+          {b.nom}
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          {t.paiement.sousTitre(montant, nomPays(b.pays, locale), quand)}
         </p>
-        {resume && resume.economie > 0 && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            {t.paiement.resume.economie(
-              formaterMontant(resume.economie, base, 0),
-              t.paiement.strategies[resume.moinsChere].nom,
-            )}
-          </p>
-        )}
-      </section>
 
-      {/* ---------------------------------------------------------------- Taux */}
-      <section className="mt-16">
-        <h2 className="font-heading text-2xl font-semibold">
-          {t.paiement.taux.titre}
-        </h2>
-        {marche?.taux && !marche.motif ? (
-          <>
-            <p className="chiffres mt-4 text-2xl">
-              {t.paiement.taux.valeur(base, formaterTaux(marche.taux), b.devise)}
+        {/* ----------------------------------------------------- Vos chiffres */}
+        <section className="mt-10">
+          <h2 className="font-heading text-2xl font-semibold">
+            {t.paiement.vosChiffres.titre}
+          </h2>
+          <p className="mt-3 text-sm font-medium">
+            {marge
+              ? t.paiement.vosChiffres.mesure(marge.n, `${base} → ${b.devise}`)
+              : hypotheses.personnalise
+                ? t.paiement.hypotheses.personnalise
+                : t.paiement.vosChiffres.defaut}
+          </p>
+          {!marge && !hypotheses.personnalise && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t.paiement.vosChiffres.pourAffiner(
+                3 -
+                  journal.filter(
+                    (p) => p.devise === b.devise && p.canal === "spot",
+                  ).length,
+              )}
             </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t.paiement.taux.source} · {t.paiement.taux.dateTaux}{" "}
-              {formaterDate(marche.dateTaux)}
-            </p>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {t.paiement.taux.avertissement}
-            </p>
-          </>
-        ) : (
-          <div className="mt-4 border-l-2 border-statut-jaune pl-4">
-            <p className="font-medium">{t.paiement.taux.indisponible.titre}</p>
-            <p className="mt-2 max-w-3xl leading-relaxed text-muted-foreground">
-              {marche?.motif
+          )}
+
+          {!ouvertChiffres ? (
+            <>
+              <dl className="mt-4 max-w-xs space-y-2 text-sm">
+                <div className="flex justify-between gap-6">
+                  <dt className="text-muted-foreground">
+                    {t.paiement.vosChiffres.marge}
+                  </dt>
+                  <dd className="chiffres">
+                    {formaterPourcentage(hypotheses.virementMargePct, 1)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-6">
+                  <dt className="text-muted-foreground">
+                    {t.paiement.vosChiffres.fraisFixes}
+                  </dt>
+                  <dd className="chiffres">
+                    {formaterMontant(
+                      hypotheses.virementFixe +
+                        hypotheses.virementIntermediaire +
+                        hypotheses.virementReception,
+                      base,
+                      0,
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                onClick={() => setOuvertChiffres(true)}
+                aria-expanded={false}
+                className="mt-4 text-sm text-primary underline-offset-4 hover:underline"
+              >
+                {t.paiement.vosChiffres.ajuster}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+                {t.paiement.hypotheses.intro}
+              </p>
+
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {(
+                  [
+                    "virementFixe",
+                    "virementIntermediaire",
+                    "virementReception",
+                    "virementMargePct",
+                    "specialisteMargePct",
+                    "specialisteFixe",
+                    "forwardPrimePct",
+                    "multiDeviseMargePct",
+                    "multiDeviseMensuel",
+                  ] as const
+                ).map((champ) => (
+                  <label key={champ} className="text-sm">
+                    <span className="block text-muted-foreground">
+                      {t.paiement.hypotheses[champ]}
+                    </span>
+                    <input
+                      inputMode="decimal"
+                      value={String(profil.hypotheses[champ])}
+                      onChange={(e) =>
+                        majHypotheses(champ, Number(e.target.value) || 0)
+                      }
+                      className={`${CLASSE_CHAMP} chiffres mt-1`}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                {profil.hypotheses.personnalise && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const suivant: Profil = {
+                        ...profil,
+                        hypotheses: { ...profil.hypotheses, personnalise: false },
+                      };
+                      setProfil(suivant);
+                      void enregistrerProfil(suivant);
+                    }}
+                  >
+                    {t.paiement.hypotheses.reinitialiser}
+                  </Button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOuvertChiffres(false)}
+                  aria-expanded={true}
+                  className="text-sm text-primary underline-offset-4 hover:underline"
+                >
+                  {t.paiement.vosChiffres.fermer}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Le résumé est l'objet central de la page : c'est la seule surface ornée. */}
+        <section className="recu mt-16 rounded-md bg-card p-8">
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {t.paiement.resume.titre}
+          </h2>
+          <p className="mt-4 max-w-3xl text-xl leading-relaxed">
+            {resume
+              ? !resume.suffisant
+                ? t.paiement.resume.sansRisque(montant, quand)
+                : resume.risque === 0
+                  ? t.paiement.resume.ancree(montant, b.devise)
+                  : resume.prixDeLaCertitude > 0
+                    ? t.paiement.resume.avecRisque(
+                        montant,
+                        quand,
+                        formaterMontant(resume.risque, base, 0),
+                        formaterMontant(resume.prixDeLaCertitude, base, 0),
+                      )
+                    : t.paiement.resume.certitudeMoinsChere(
+                        montant,
+                        quand,
+                        formaterMontant(resume.risque, base, 0),
+                        formaterMontant(-resume.prixDeLaCertitude, base, 0),
+                      )
+              : marche?.motif
                 ? motifEnClair(t, marche.motif, b.devise)
                 : t.commun.chargement}
+          </p>
+          {resume && resume.economie > 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t.paiement.resume.economie(
+                formaterMontant(resume.economie, base, 0),
+                t.paiement.strategies[resume.moinsChere].nom,
+              )}
             </p>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
 
-      {/* --------------------------------------------------------- Statistiques */}
-      {stats && (
+        {/* ---------------------------------------------------------------- Taux */}
         <section className="mt-16">
           <h2 className="font-heading text-2xl font-semibold">
-            {t.paiement.stats.titre}
+            {t.paiement.taux.titre}
           </h2>
-          <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-            {t.paiement.stats.intro(fenetre, `${base} → ${b.devise}`)}
+          {marche?.taux && !marche.motif ? (
+            <>
+              <p className="chiffres mt-4 text-2xl">
+                {t.paiement.taux.valeur(base, formaterTaux(marche.taux), b.devise)}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t.paiement.taux.source} · {t.paiement.taux.dateTaux}{" "}
+                {formaterDate(marche.dateTaux)}
+              </p>
+              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {t.paiement.taux.avertissement}
+              </p>
+            </>
+          ) : (
+            <div className="mt-4 border-l-2 border-statut-jaune pl-4">
+              <p className="font-medium">{t.paiement.taux.indisponible.titre}</p>
+              <p className="mt-2 max-w-3xl leading-relaxed text-muted-foreground">
+                {marche?.motif
+                  ? motifEnClair(t, marche.motif, b.devise)
+                  : t.commun.chargement}
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* ----------------------------------------------------------- Votre date */}
+        {stats && marche?.taux && (
+          <DatePaiement
+            serie3ans={serie3ans}
+            stats={stats}
+            datePaiement={b.prochainPaiement}
+            montantCible={b.montant}
+            taux={marche.taux}
+            base={base}
+          />
+        )}
+
+        {/* ------------------------------------------------------------ Vos options */}
+        {resume && (
+          <section className="mt-16">
+            <h2 className="font-heading text-2xl font-semibold">
+              {t.paiement.strategies.titre}
+            </h2>
+            <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+              {t.paiement.strategies.intro}
+            </p>
+
+            <Comparateur
+              strategies={strategies}
+              base={base}
+              moinsChere={resume.moinsChere}
+              onNoter={noter}
+            />
+
+            <div className="mt-10 border-l-2 border-primary pl-5">
+              <h3 className="font-heading text-lg font-semibold">
+                {t.paiement.strategies.swift.titre}
+              </h3>
+              <p className="mt-2 max-w-3xl leading-relaxed">
+                {t.paiement.strategies.swift.corps}
+              </p>
+              <dl className="mt-4 space-y-2 text-sm">
+                {INSTRUCTIONS_FRAIS.map((code) => (
+                  <div key={code}>
+                    {
+                      t.paiement.strategies.swift[
+                        code.toLowerCase() as "sha" | "our" | "ben"
+                      ]
+                    }
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {t.paiement.strategies.swift.conclusion}
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* --------------------------------------------------------- Statistiques */}
+        {stats && (
+          <section className="mt-16">
+            <h2 className="font-heading text-2xl font-semibold">
+              {t.paiement.stats.titre}
+            </h2>
+            <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+              {t.paiement.stats.intro(fenetre, `${base} → ${b.devise}`)}
+            </p>
+
+            {!stats.suffisant ? (
+              <p className="mt-6 max-w-3xl border-l-2 border-statut-jaune pl-4 leading-relaxed">
+                {t.paiement.stats.insuffisant}
+              </p>
+            ) : stats.quotidiennePct === 0 ? (
+              <p className="mt-6 max-w-3xl border-l-2 border-statut-vert pl-4 leading-relaxed">
+                {t.paiement.stats.ancree}
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t.paiement.stats.periode(
+                    formaterDate(stats.debut),
+                    formaterDate(stats.fin),
+                    stats.observations,
+                  )}
+                </p>
+                <dl className="registre mt-6 border-y border-border">
+                  <Mesure
+                    titre={t.paiement.stats.amplitudeTypique}
+                    aide={t.paiement.stats.amplitudeTypiqueAide}
+                    montant={formaterMontant(
+                      (stats.amplitudeMedianePct / 100) *
+                        (resume?.coutAujourdhui ?? 0),
+                      base,
+                      0,
+                    )}
+                    pourcentage={formaterPourcentage(stats.amplitudeMedianePct, 2)}
+                  />
+                  <Mesure
+                    titre={t.paiement.stats.amplitudeLarge}
+                    aide={t.paiement.stats.amplitudeLargeAide}
+                    montant={formaterMontant(
+                      (stats.amplitudeP80Pct / 100) * (resume?.coutAujourdhui ?? 0),
+                      base,
+                      0,
+                    )}
+                    pourcentage={formaterPourcentage(stats.amplitudeP80Pct, 2)}
+                  />
+                  <Mesure
+                    titre={t.paiement.stats.pire}
+                    aide={t.paiement.stats.pireAide}
+                    montant={formaterMontant(
+                      (stats.pireDefavorablePct / 100) *
+                        (resume?.coutAujourdhui ?? 0),
+                      base,
+                      0,
+                    )}
+                    pourcentage={formaterPourcentage(stats.pireDefavorablePct, 2)}
+                  />
+                  <Mesure
+                    titre={t.paiement.stats.annualisee}
+                    aide={t.paiement.stats.annualiseeAide}
+                    montant=""
+                    pourcentage={formaterPourcentage(stats.annualiseePct, 1)}
+                  />
+                </dl>
+              </>
+            )}
+
+            <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {t.paiement.stats.nonPrediction}
+            </p>
+          </section>
+        )}
+
+        {/* ---------------------------------------------------------------- Crypto */}
+        <section className="mt-16">
+          <h2 className="font-heading text-2xl font-semibold">
+            {t.paiement.crypto.titre}
+          </h2>
+          <p className={`mt-4 text-lg font-medium ${COULEUR_STATUT[fiche.statut]}`}>
+            {t.paiement.crypto.statut[fiche.statut]} —{" "}
+            {nomPays(b.pays, locale)}
           </p>
 
-          {!stats.suffisant ? (
-            <p className="mt-6 max-w-3xl border-l-2 border-statut-jaune pl-4 leading-relaxed">
-              {t.paiement.stats.insuffisant}
-            </p>
-          ) : stats.quotidiennePct === 0 ? (
-            <p className="mt-6 max-w-3xl border-l-2 border-statut-vert pl-4 leading-relaxed">
-              {t.paiement.stats.ancree}
+          {fiche.statut === "non_verifie" ? (
+            <p className="mt-3 max-w-3xl leading-relaxed">
+              {t.paiement.crypto.nonVerifie}
             </p>
           ) : (
             <>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t.paiement.stats.periode(
-                  formaterDate(stats.debut),
-                  formaterDate(stats.fin),
-                  stats.observations,
-                )}
-              </p>
-              <dl className="registre mt-6 border-y border-border">
-                <Mesure
-                  titre={t.paiement.stats.amplitudeTypique}
-                  aide={t.paiement.stats.amplitudeTypiqueAide}
-                  montant={formaterMontant(
-                    (stats.amplitudeMedianePct / 100) *
-                      (resume?.coutAujourdhui ?? 0),
-                    base,
-                    0,
-                  )}
-                  pourcentage={formaterPourcentage(stats.amplitudeMedianePct, 2)}
-                />
-                <Mesure
-                  titre={t.paiement.stats.amplitudeLarge}
-                  aide={t.paiement.stats.amplitudeLargeAide}
-                  montant={formaterMontant(
-                    (stats.amplitudeP80Pct / 100) * (resume?.coutAujourdhui ?? 0),
-                    base,
-                    0,
-                  )}
-                  pourcentage={formaterPourcentage(stats.amplitudeP80Pct, 2)}
-                />
-                <Mesure
-                  titre={t.paiement.stats.pire}
-                  aide={t.paiement.stats.pireAide}
-                  montant={formaterMontant(
-                    (stats.pireDefavorablePct / 100) *
-                      (resume?.coutAujourdhui ?? 0),
-                    base,
-                    0,
-                  )}
-                  pourcentage={formaterPourcentage(stats.pireDefavorablePct, 2)}
-                />
-                <Mesure
-                  titre={t.paiement.stats.annualisee}
-                  aide={t.paiement.stats.annualiseeAide}
-                  montant=""
-                  pourcentage={formaterPourcentage(stats.annualiseePct, 1)}
-                />
-              </dl>
+              <p className="mt-3 max-w-3xl leading-relaxed">{fiche.resume}</p>
+              <h3 className="mt-8 font-medium">{t.paiement.crypto.risquesTitre}</h3>
+              <ul className="registre mt-3 max-w-3xl border-y border-border text-sm">
+                {fiche.risques.map((r) => (
+                  <li key={r} className="py-3 leading-relaxed">
+                    {r}
+                  </li>
+                ))}
+                {RISQUES_UNIVERSELS_CLES.map((cle) => (
+                  <li key={cle} className="py-3 leading-relaxed">
+                    {t.paiement.crypto.universels[cle]}
+                  </li>
+                ))}
+              </ul>
+              <h3 className="mt-8 font-medium">{t.paiement.crypto.sourcesTitre}</h3>
+              <ul className="mt-3 space-y-1 text-sm">
+                {fiche.sources.map((s) => (
+                  <li key={s.url}>
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      {s.titre}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </>
           )}
 
-          <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            {t.paiement.stats.nonPrediction}
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t.commun.verifieLe} {formaterDate(DERNIERE_VERIFICATION)}
+          </p>
+          <p className="mt-6 max-w-3xl border-l-2 border-statut-jaune pl-4 leading-relaxed">
+            {t.paiement.crypto.avertissement}
           </p>
         </section>
-      )}
 
-      {/* ------------------------------------------------------------ Stratégies */}
-      {strategies.length > 0 && (
+        {/* -------------------------------------------------------------- Décisions */}
         <section className="mt-16">
           <h2 className="font-heading text-2xl font-semibold">
-            {t.paiement.strategies.titre}
+            {t.paiement.decision.titre}
           </h2>
           <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-            {t.paiement.strategies.intro}
+            {t.paiement.decision.corps}
           </p>
 
-          <div className="registre mt-8 border-y border-border">
-            {strategies.map((s) => (
-              <Strategie
-                key={s.cle}
-                strategie={s}
-                base={base}
-                onChoisir={() => {
-                  if (!marche?.taux) return;
-                  const decision = {
-                    beneficiaireId: b.id,
-                    beneficiaireNom: b.nom,
-                    strategie: s.cle,
-                    deviseBase: base,
-                    deviseCible: b.devise,
-                    montantCible: b.montant,
-                    taux: marche.taux,
-                    dateTaux: marche.dateTaux,
-                    coutEstime: s.coutCentral,
-                  };
-                  void enregistrerDecision(decision).then(() =>
-                    lireDecisions().then(setDecisions),
-                  );
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="mt-10 border-l-2 border-primary pl-5">
-            <h3 className="font-heading text-lg font-semibold">
-              {t.paiement.strategies.swift.titre}
-            </h3>
-            <p className="mt-2 max-w-3xl leading-relaxed">
-              {t.paiement.strategies.swift.corps}
+          <h3 className="mt-8 font-medium">{t.paiement.decision.journal}</h3>
+          {decisions.filter((d) => d.beneficiaireId === b.id).length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t.paiement.decision.vide}
             </p>
-            <dl className="mt-4 space-y-2 text-sm">
-              {INSTRUCTIONS_FRAIS.map((code) => (
-                <div key={code}>
-                  {
-                    t.paiement.strategies.swift[
-                      code.toLowerCase() as "sha" | "our" | "ben"
-                    ]
-                  }
-                </div>
-              ))}
-            </dl>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {t.paiement.strategies.swift.conclusion}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* ---------------------------------------------------------------- Crypto */}
-      <section className="mt-16">
-        <h2 className="font-heading text-2xl font-semibold">
-          {t.paiement.crypto.titre}
-        </h2>
-        <p className={`mt-4 text-lg font-medium ${COULEUR_STATUT[fiche.statut]}`}>
-          {t.paiement.crypto.statut[fiche.statut]} —{" "}
-          {nomPays(b.pays, locale)}
-        </p>
-
-        {fiche.statut === "non_verifie" ? (
-          <p className="mt-3 max-w-3xl leading-relaxed">
-            {t.paiement.crypto.nonVerifie}
-          </p>
-        ) : (
-          <>
-            <p className="mt-3 max-w-3xl leading-relaxed">{fiche.resume}</p>
-            <h3 className="mt-8 font-medium">{t.paiement.crypto.risquesTitre}</h3>
-            <ul className="registre mt-3 max-w-3xl border-y border-border text-sm">
-              {fiche.risques.map((r) => (
-                <li key={r} className="py-3 leading-relaxed">
-                  {r}
-                </li>
-              ))}
-              {RISQUES_UNIVERSELS_CLES.map((cle) => (
-                <li key={cle} className="py-3 leading-relaxed">
-                  {t.paiement.crypto.universels[cle]}
-                </li>
-              ))}
-            </ul>
-            <h3 className="mt-8 font-medium">{t.paiement.crypto.sourcesTitre}</h3>
-            <ul className="mt-3 space-y-1 text-sm">
-              {fiche.sources.map((s) => (
-                <li key={s.url}>
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline-offset-4 hover:underline"
+          ) : (
+            <ul className="registre mt-3 border-y border-border text-sm">
+              {decisions
+                .filter((d) => d.beneficiaireId === b.id)
+                .map((d) => (
+                  <li
+                    key={d.id}
+                    className="chiffres flex flex-wrap items-baseline gap-x-8 gap-y-1 py-3"
                   >
-                    {s.titre}
-                  </a>
-                </li>
-              ))}
+                    <span>{formaterHorodatage(d.creeLe)}</span>
+                    <span className="font-medium">
+                      {t.paiement.strategies[d.strategie as CleStrategie].nom}
+                    </span>
+                    <span>
+                      1 {d.deviseBase} = {formaterTaux(d.taux)} {d.deviseCible} ·{" "}
+                      {formaterDate(d.dateTaux)}
+                    </span>
+                    <span>{formaterMontant(d.coutEstime, d.deviseBase, 0)}</span>
+                  </li>
+                ))}
             </ul>
-          </>
-        )}
+          )}
+        </section>
 
-        <p className="mt-4 text-sm text-muted-foreground">
-          {t.commun.verifieLe} {formaterDate(DERNIERE_VERIFICATION)}
-        </p>
-        <p className="mt-6 max-w-3xl border-l-2 border-statut-jaune pl-4 leading-relaxed">
-          {t.paiement.crypto.avertissement}
-        </p>
-      </section>
-
-      {/* ------------------------------------------------------------ Hypothèses */}
-      <section className="mt-16">
-        <h2 className="font-heading text-2xl font-semibold">
-          {t.paiement.hypotheses.titre}
-        </h2>
-        <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-          {t.paiement.hypotheses.intro}
-        </p>
-        <p className="mt-3 text-sm font-medium">
-          {profil.hypotheses.personnalise
-            ? t.paiement.hypotheses.personnalise
-            : t.paiement.hypotheses.parDefaut}
-        </p>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {(
-            [
-              "virementFixe",
-              "virementIntermediaire",
-              "virementReception",
-              "virementMargePct",
-              "specialisteMargePct",
-              "specialisteFixe",
-              "forwardPrimePct",
-              "multiDeviseMargePct",
-              "multiDeviseMensuel",
-            ] as const
-          ).map((champ) => (
-            <label key={champ} className="text-sm">
-              <span className="block text-muted-foreground">
-                {t.paiement.hypotheses[champ]}
-              </span>
-              <input
-                inputMode="decimal"
-                value={String(profil.hypotheses[champ])}
-                onChange={(e) => majHypotheses(champ, Number(e.target.value) || 0)}
-                className={`${CLASSE_CHAMP} chiffres mt-1`}
-              />
-            </label>
-          ))}
+        <div className="mt-16 max-w-3xl">
+          <Terme cle="correspondant" />
         </div>
-
-        {profil.hypotheses.personnalise && (
-          <Button
-            variant="ghost"
-            className="mt-6"
-            onClick={() => {
-              const suivant: Profil = {
-                ...profil,
-                hypotheses: { ...profil.hypotheses, personnalise: false },
-              };
-              setProfil(suivant);
-              void enregistrerProfil(suivant);
-            }}
-          >
-            {t.paiement.hypotheses.reinitialiser}
-          </Button>
-        )}
-      </section>
-
-      {/* -------------------------------------------------------------- Décisions */}
-      <section className="mt-16">
-        <h2 className="font-heading text-2xl font-semibold">
-          {t.paiement.decision.titre}
-        </h2>
-        <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-          {t.paiement.decision.corps}
-        </p>
-
-        <h3 className="mt-8 font-medium">{t.paiement.decision.journal}</h3>
-        {decisions.filter((d) => d.beneficiaireId === b.id).length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            {t.paiement.decision.vide}
-          </p>
-        ) : (
-          <ul className="registre mt-3 border-y border-border text-sm">
-            {decisions
-              .filter((d) => d.beneficiaireId === b.id)
-              .map((d) => (
-                <li
-                  key={d.id}
-                  className="chiffres flex flex-wrap items-baseline gap-x-8 gap-y-1 py-3"
-                >
-                  <span>{formaterHorodatage(d.creeLe)}</span>
-                  <span className="font-medium">
-                    {t.paiement.strategies[d.strategie as CleStrategie].nom}
-                  </span>
-                  <span>
-                    1 {d.deviseBase} = {formaterTaux(d.taux)} {d.deviseCible} ·{" "}
-                    {formaterDate(d.dateTaux)}
-                  </span>
-                  <span>{formaterMontant(d.coutEstime, d.deviseBase, 0)}</span>
-                </li>
-              ))}
-          </ul>
-        )}
-      </section>
-
-      <div className="mt-16 max-w-3xl">
-        <Terme cle="correspondant" />
       </div>
+
+      {/* Panneau fixe : les mêmes chiffres qu'ailleurs sur la page, jamais un
+          calcul nouveau, pour qu'on les ait sous les yeux en faisant défiler. */}
+      {marche?.taux && resume && (
+        <aside className="hidden lg:block">
+          <dl className="registre sticky top-8 border-y border-border text-sm">
+            <div className="flex items-baseline justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">
+                {t.paiement.taux.dateTaux}
+                {t.commun.deuxPoints}
+              </dt>
+              <dd className="chiffres text-right">
+                {formaterTaux(marche.taux)} {b.devise}
+                <span className="block text-xs font-normal text-muted-foreground">
+                  {formaterDate(marche.dateTaux)}
+                </span>
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">
+                {t.paiement.vosChiffres.marge}
+                {t.commun.deuxPoints}
+              </dt>
+              <dd className="chiffres">
+                {formaterPourcentage(hypotheses.virementMargePct, 1)}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">
+                {t.paiement.strategies.moinsChere}
+                {t.commun.deuxPoints}
+              </dt>
+              <dd>{t.paiement.strategies[resume.moinsChere].nom}</dd>
+            </div>
+          </dl>
+        </aside>
+      )}
     </div>
   );
 }
@@ -550,98 +676,6 @@ function Mesure({
         {montant && <span className="text-lg">{montant}</span>}
         <span className="ml-3 text-sm text-muted-foreground">{pourcentage}</span>
       </dd>
-    </div>
-  );
-}
-
-function Strategie({
-  strategie: s,
-  base,
-  onChoisir,
-}: {
-  strategie: CoutStrategie;
-  base: string;
-  onChoisir: () => void;
-}) {
-  const t = useT();
-  const [ouvert, setOuvert] = useState(false);
-  const copie = t.paiement.strategies[s.cle];
-
-  return (
-    <div className="py-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-        <div className="max-w-xl">
-          <h3 className="font-heading text-lg font-semibold">{copie.nom}</h3>
-          <p className="text-sm text-muted-foreground">{copie.court}</p>
-        </div>
-        <p className="chiffres text-right">
-          <span className="text-lg">
-            {s.certain
-              ? formaterMontant(s.coutCentral, base, 0)
-              : t.paiement.strategies.central(
-                  formaterMontant(s.coutCentral, base, 0),
-                )}
-          </span>
-          <span className="block text-sm text-muted-foreground">
-            {s.certain
-              ? t.paiement.strategies.certain
-              : t.paiement.strategies.incertain(
-                  t.paiement.strategies.plage(
-                    formaterMontant(s.coutPlancher, base, 0),
-                    formaterMontant(s.coutPlafond, base, 0),
-                  ),
-                )}
-          </span>
-        </p>
-      </div>
-
-      <p className="mt-3 max-w-3xl leading-relaxed">{copie.explication}</p>
-      <ul className="mt-3 max-w-3xl space-y-1 text-sm text-muted-foreground">
-        <li>+ {copie.pour}</li>
-        <li>− {copie.contre}</li>
-      </ul>
-
-      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-        <button
-          type="button"
-          onClick={() => setOuvert(!ouvert)}
-          aria-expanded={ouvert}
-          className="text-primary underline-offset-4 hover:underline"
-        >
-          {t.paiement.strategies.detailFrais}
-        </button>
-        {s.nombreTransferts > 1 && (
-          <span className="chiffres text-muted-foreground">
-            {t.paiement.strategies.transferts(s.nombreTransferts)}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={onChoisir}
-          className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          {t.paiement.decision.bouton}
-        </button>
-      </div>
-
-      {ouvert && (
-        <dl className="chiffres mt-4 max-w-xl space-y-1 text-sm">
-          {s.lignes.map((l) => (
-            <div key={l.cle} className="flex justify-between gap-6">
-              <dt className="text-muted-foreground">
-                {t.paiement.strategies.postes[l.cle]}
-                {l.mode === "pourcentage" &&
-                  ` (${formaterPourcentage(l.valeur, 2)})`}
-              </dt>
-              <dd>{formaterMontant(l.montant, base, 2)}</dd>
-            </div>
-          ))}
-          <div className="flex justify-between gap-6 border-t border-border pt-1 font-medium">
-            <dt>{t.accueil.colonnes.coute}</dt>
-            <dd>{formaterMontant(s.fraisTotal, base, 2)}</dd>
-          </div>
-        </dl>
-      )}
     </div>
   );
 }

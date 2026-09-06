@@ -79,15 +79,24 @@ export function Comparateur({
                   </td>
                   <td className="py-4 text-right text-muted-foreground">
                     {option.certain ? s.certain : s.incertainCourt}
-                    <button
-                      type="button"
-                      className="mt-1 block w-full text-right text-xs underline underline-offset-4"
-                      aria-expanded={ouverte}
-                      aria-controls={`detail-${option.cle}`}
-                      onClick={() => setDepliee(ouverte ? null : option.cle)}
-                    >
-                      {ouverte ? s.replier : s.deplier}
-                    </button>
+                    <span className="mt-1 flex justify-end gap-4 text-xs">
+                      <button
+                        type="button"
+                        className="underline underline-offset-4"
+                        aria-expanded={ouverte}
+                        aria-controls={`detail-${option.cle}`}
+                        onClick={() => setDepliee(ouverte ? null : option.cle)}
+                      >
+                        {ouverte ? s.replier : s.deplier}
+                      </button>
+                      <button
+                        type="button"
+                        className="underline underline-offset-4"
+                        onClick={() => onNoter(option.cle)}
+                      >
+                        {t.paiement.decision.bouton}
+                      </button>
+                    </span>
                   </td>
                 </tr>
 
@@ -123,13 +132,6 @@ export function Comparateur({
                           {s.transferts(option.nombreTransferts)}
                         </p>
                       )}
-                      <button
-                        type="button"
-                        className="mt-3 text-xs underline underline-offset-4"
-                        onClick={() => onNoter(option.cle)}
-                      >
-                        {t.paiement.decision.bouton}
-                      </button>
                     </td>
                   </tr>
                 )}
