@@ -9,16 +9,24 @@ import { useT } from "@/i18n";
 import {
   aujourdhuiISO,
   formaterMontant,
+  formaterPourcentage,
   joursAvant,
   localeActive,
 } from "@/lib/format";
+import { resumerPortefeuille } from "@/lib/journal";
 import { useMarches } from "@/lib/marche";
 import { resumerPaiement } from "@/lib/strategies";
-import { enregistrerProfil, lireProfil, PROFIL_VIDE } from "@/lib/stockage";
+import {
+  enregistrerProfil,
+  lireJournal,
+  lireProfil,
+  PROFIL_VIDE,
+} from "@/lib/stockage";
 import {
   JOURS_PAR_FREQUENCE,
   type Beneficiaire,
   type Frequence,
+  type PaiementPasse,
   type Profil,
 } from "@/lib/types";
 import { calculerVolatilite } from "@/lib/volatilite";
@@ -82,10 +90,14 @@ function exemple(): Beneficiaire[] {
 export default function Accueil() {
   const t = useT();
   const [profil, setProfil] = useState<Profil | null>(null);
+  const [journal, setJournal] = useState<PaiementPasse[] | null>(null);
   const [ouvert, setOuvert] = useState(false);
 
   useEffect(() => {
     void lireProfil().then(setProfil);
+  }, []);
+  useEffect(() => {
+    lireJournal().then(setJournal);
   }, []);
 
   function maj(suivant: Profil) {
@@ -94,9 +106,15 @@ export default function Accueil() {
   }
 
   const beneficiaires = profil?.beneficiaires ?? [];
-  const { marches } = useMarches(
+  const devises = [
+    ...new Set([
+      ...beneficiaires.map((b) => b.devise),
+      ...(journal ?? []).map((p) => p.devise),
+    ]),
+  ];
+  const { marches, chargement } = useMarches(
     profil?.deviseBase ?? PROFIL_VIDE.deviseBase,
-    beneficiaires.map((b) => b.devise),
+    devises,
   );
 
   if (!profil) {
@@ -109,6 +127,13 @@ export default function Accueil() {
 
   const locale = localeActive();
   const base = profil.deviseBase;
+
+  const series = Object.fromEntries(
+    Object.entries(marches)
+      .filter(([, m]) => m.serie)
+      .map(([d, m]) => [d, m.serie!]),
+  );
+  const portefeuille = resumerPortefeuille(journal ?? [], series);
 
   // Le total mensuel n'a de sens que si toutes les devises ont un taux : on
   // n'additionne pas des montants dont une partie manque.
@@ -170,6 +195,102 @@ export default function Accueil() {
           </select>
         </label>
       </div>
+
+      {journal !== null && !chargement && (
+        <section className="mt-10">
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className="font-heading text-2xl font-semibold">
+              {t.portefeuille.titre}
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {t.portefeuille.periode}
+            </span>
+          </div>
+
+          {(journal ?? []).length === 0 ? (
+            <div className="mt-4 max-w-2xl">
+              <p className="font-medium">{t.portefeuille.vide.titre}</p>
+              <p className="mt-2 leading-relaxed text-muted-foreground">
+                {t.portefeuille.vide.corps}
+              </p>
+              <Link
+                href="/journal"
+                className="mt-3 inline-block text-sm underline underline-offset-4"
+              >
+                {t.portefeuille.vide.action}
+              </Link>
+            </div>
+          ) : portefeuille.n === 0 ? (
+            <p className="mt-4 max-w-3xl leading-relaxed text-muted-foreground">
+              {t.portefeuille.ignores(portefeuille.ignores)}
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+                {t.portefeuille.intro}
+              </p>
+
+              <dl className="registre mt-6 border-y border-border">
+                <ChiffreCle
+                  terme={t.portefeuille.volume}
+                  valeur={formaterMontant(portefeuille.volume, base, 0)}
+                  detail={t.portefeuille.volumeDetail(portefeuille.n)}
+                />
+                <ChiffreCle
+                  terme={t.portefeuille.frais}
+                  valeur={formaterMontant(portefeuille.frais, base, 0)}
+                  detail={t.portefeuille.fraisDetail(
+                    formaterPourcentage(portefeuille.fraisPct),
+                  )}
+                  aide={t.portefeuille.fraisAide}
+                />
+                <ChiffreCle
+                  terme={t.portefeuille.impact}
+                  valeur={formaterMontant(portefeuille.impactTaux, base, 0)}
+                  detail={t.portefeuille.impactDetail}
+                  aide={t.portefeuille.impactAide}
+                />
+              </dl>
+
+              {portefeuille.devises.some((d) => !d.complet) && (
+                <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
+                  {t.portefeuille.incomplet}
+                </p>
+              )}
+              {portefeuille.ignores > 0 && (
+                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                  {t.portefeuille.ignores(portefeuille.ignores)}
+                </p>
+              )}
+
+              <h3 className="mt-8 font-heading text-lg font-semibold">
+                {t.portefeuille.parDevise}
+              </h3>
+              <ul className="registre mt-3 border-y border-border text-sm">
+                {portefeuille.devises.map((d) => (
+                  <li
+                    key={d.devise}
+                    className="flex flex-wrap justify-between gap-x-8 gap-y-1 py-3"
+                  >
+                    <span className="chiffres">
+                      {d.devise} · {t.portefeuille.volumeDetail(d.n)} ·{" "}
+                      {formaterMontant(d.volume, base, 0)}
+                    </span>
+                    <span className="chiffres text-muted-foreground">
+                      {formaterMontant(d.frais, base, 0)} (
+                      {formaterPourcentage(d.fraisPct)})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      <h2 className="mt-14 font-heading text-2xl font-semibold">
+        {t.portefeuille.aPayer}
+      </h2>
 
       {beneficiaires.length === 0 ? (
         <div className="mt-12 border-y border-border py-12">
@@ -479,5 +600,37 @@ function FormulaireBeneficiaire({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Une ligne de chiffre clé : le montant d'abord, le pourcentage ensuite et en gris. */
+function ChiffreCle({
+  terme,
+  valeur,
+  detail,
+  aide,
+}: {
+  terme: string;
+  valeur: string;
+  detail: string;
+  aide?: string;
+}) {
+  return (
+    <div className="py-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
+        <dt className="font-medium">{terme}</dt>
+        <dd className="flex items-baseline gap-3">
+          <span className="chiffres text-lg">{valeur}</span>
+          <span className="chiffres text-sm text-muted-foreground">
+            {detail}
+          </span>
+        </dd>
+      </div>
+      {aide && (
+        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+          {aide}
+        </p>
+      )}
+    </div>
   );
 }
