@@ -1,4 +1,4 @@
-import type { PaiementPasse, SerieTaux } from "./types";
+import type { CanalPaiement, Hypotheses, PaiementPasse, SerieTaux } from "./types";
 
 /**
  * Le journal — ce que les transferts ont RÉELLEMENT coûté.
@@ -243,5 +243,81 @@ export function resumerPortefeuille(
     impactTaux: devises.reduce((a, d) => a + d.impactTaux, 0),
     devises,
     ignores,
+  };
+}
+
+/** Sous ce nombre d'observations, on garde les valeurs par défaut. */
+const OBSERVATIONS_MINIMALES_MARGE = 3;
+
+function mediane(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  const tries = [...xs].sort((a, b) => a - b);
+  const milieu = Math.floor(tries.length / 2);
+  return tries.length % 2
+    ? tries[milieu]
+    : (tries[milieu - 1] + tries[milieu]) / 2;
+}
+
+export interface MargeObservee {
+  /** Écart tout compris médian, en % du montant débité. */
+  pct: number;
+  n: number;
+  /** false si au moins un paiement n'avait pas son montant reçu. */
+  complet: boolean;
+}
+
+/**
+ * Ce que ce corridor coûte VRAIMENT à cet utilisateur, mesuré sur ses propres
+ * virements.
+ *
+ * Médiane et non moyenne : un virement minuscule où les frais fixes dominent
+ * produit un écart en pourcentage énorme, et il ne doit pas déplacer la
+ * calibration de tous les autres.
+ */
+export function margeObservee(
+  paiements: PaiementPasse[],
+  serie: SerieTaux,
+  devise: string,
+  canal: CanalPaiement,
+): MargeObservee | null {
+  const ecarts: number[] = [];
+  let complet = true;
+
+  for (const p of paiements) {
+    if (p.devise !== devise || p.canal !== canal) continue;
+    const taux = tauxAuPlusProche(serie, p.date);
+    if (!taux) continue;
+    const c = coutReel(p, taux);
+    ecarts.push(c.ecartPct);
+    complet &&= c.complet;
+  }
+
+  if (ecarts.length < OBSERVATIONS_MINIMALES_MARGE) return null;
+  return { pct: mediane(ecarts), n: ecarts.length, complet };
+}
+
+/**
+ * Remplace la marge estimée par la marge mesurée.
+ *
+ * L'écart observé contient TOUT : la marge dans le taux, les frais fixes et
+ * les prélèvements du trajet. On en retire donc la part des frais fixes déjà
+ * modélisés, sinon ils seraient comptés deux fois.
+ *
+ * ponytail: la part fixe dépend du montant, donc la calibration est valable
+ * pour ce montant-là. C'est assez juste pour un paiement récurrent de taille
+ * stable ; si les montants variaient d'un ordre de grandeur, il faudrait
+ * régresser l'écart sur le montant plutôt que prendre une médiane.
+ */
+export function hypothesesCalibrees(
+  h: Hypotheses,
+  marge: MargeObservee,
+  montantBase: number,
+): Hypotheses {
+  const fixes = h.virementFixe + h.virementIntermediaire + h.virementReception;
+  const partFixePct = montantBase > 0 ? (fixes / montantBase) * 100 : 0;
+  return {
+    ...h,
+    virementMargePct: Math.max(0, marge.pct - partFixePct),
+    personnalise: true,
   };
 }

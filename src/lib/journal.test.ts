@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   coutDeLAttente,
   coutReel,
+  hypothesesCalibrees,
   impactDuTaux,
+  margeObservee,
   resumerPortefeuille,
   tauxAuPlusProche,
 } from "./journal";
+import { HYPOTHESES_DEFAUT } from "./hypotheses";
 import type { PaiementPasse, SerieTaux } from "./types";
 
 const SERIE: SerieTaux = {
@@ -185,5 +188,85 @@ describe("resumerPortefeuille", () => {
     expect(r.n).toBe(0);
     expect(r.volume).toBe(0);
     expect(r.devises).toHaveLength(0);
+  });
+});
+
+describe("margeObservee", () => {
+  const troisPaiements = [
+    paiement({ id: "a", date: "2026-08-04", montantRecu: 6150 }),
+    paiement({ id: "b", date: "2026-08-10", montantRecu: 6160 }),
+    paiement({ id: "c", date: "2026-08-14", montantRecu: 6155 }),
+  ];
+
+  it("renvoie la marge médiane dès trois observations", () => {
+    const m = margeObservee(troisPaiements, SERIE, "USD", "spot");
+    expect(m).not.toBeNull();
+    expect(m!.n).toBe(3);
+    expect(m!.complet).toBe(true);
+    expect(m!.pct).toBeGreaterThan(0);
+  });
+
+  it("renvoie null sous trois observations", () => {
+    expect(margeObservee(troisPaiements.slice(0, 2), SERIE, "USD", "spot")).toBeNull();
+  });
+
+  it("ne mélange pas les canaux", () => {
+    const mixte = [
+      ...troisPaiements.slice(0, 2),
+      paiement({ id: "c", date: "2026-08-14", montantRecu: 6155, canal: "multidevise" }),
+    ];
+    expect(margeObservee(mixte, SERIE, "USD", "spot")).toBeNull();
+  });
+
+  it("se marque incomplet si un montant reçu manque", () => {
+    const partiel = [
+      ...troisPaiements.slice(0, 2),
+      paiement({ id: "c", date: "2026-08-14" }),
+    ];
+    const m = margeObservee(partiel, SERIE, "USD", "spot");
+    expect(m!.complet).toBe(false);
+  });
+
+  it("résiste à un virement aberrant grâce à la médiane", () => {
+    const avecAberrant = [
+      ...troisPaiements,
+      paiement({ id: "d", date: "2026-08-12", montantEnvoye: 50, montantVoulu: 20, montantRecu: 5 }),
+    ];
+    const sans = margeObservee(troisPaiements, SERIE, "USD", "spot")!;
+    const avec = margeObservee(avecAberrant, SERIE, "USD", "spot")!;
+    expect(Math.abs(avec.pct - sans.pct)).toBeLessThan(5);
+  });
+});
+
+describe("hypothesesCalibrees", () => {
+  it("met la marge résiduelle une fois les frais fixes déduits", () => {
+    const h = hypothesesCalibrees(
+      HYPOTHESES_DEFAUT,
+      { pct: 3.5, n: 5, complet: true },
+      8900,
+    );
+    // 90 $ de frais fixes sur 8 900 $ ≈ 1,011 % ; il reste ≈ 2,489 %.
+    expect(h.virementMargePct).toBeCloseTo(3.5 - (90 / 8900) * 100, 6);
+    expect(h.personnalise).toBe(true);
+  });
+
+  it("plancher à zéro quand les frais fixes dépassent l'écart observé", () => {
+    const h = hypothesesCalibrees(
+      HYPOTHESES_DEFAUT,
+      { pct: 0.2, n: 5, complet: true },
+      1000,
+    );
+    expect(h.virementMargePct).toBe(0);
+  });
+
+  it("ne touche à aucun autre poste", () => {
+    const h = hypothesesCalibrees(
+      HYPOTHESES_DEFAUT,
+      { pct: 3.5, n: 5, complet: true },
+      8900,
+    );
+    expect(h.forwardPrimePct).toBe(HYPOTHESES_DEFAUT.forwardPrimePct);
+    expect(h.multiDeviseMargePct).toBe(HYPOTHESES_DEFAUT.multiDeviseMargePct);
+    expect(h.virementFixe).toBe(HYPOTHESES_DEFAUT.virementFixe);
   });
 });
