@@ -24,7 +24,12 @@ import {
   joursAvant,
   localeActive,
 } from "@/lib/format";
-import { hypothesesCalibrees, margeObservee } from "@/lib/journal";
+import {
+  hypothesesCalibrees,
+  margeObservee,
+  OBSERVATIONS_MINIMALES_MARGE,
+  paiementsManquants,
+} from "@/lib/journal";
 import { derniersJours, JOURS_STATISTIQUES, useMarches } from "@/lib/marche";
 import { comparerStrategies, resumerPaiement } from "@/lib/strategies";
 import {
@@ -141,6 +146,15 @@ export function DetailPaiement({ id }: { id: string }) {
   // soustraction de hypothesesCalibrees passe alors sous zéro et son
   // `Math.max(0, …)` renvoie 0. Ce zéro est un artefact de bornage, pas une
   // mesure — on refuse de le présenter comme telle. Voir correctif 4.
+  // Ce qu'il reste à saisir avant que la calibration puisse se déclencher.
+  // `margeObservee` écarte les paiements dont la date précède la série : les
+  // compter quand même afficherait « encore 1 paiement » à quelqu'un qui en a
+  // déjà saisi cinq, indéfiniment.
+  const manquants =
+    serie3ans && marche?.taux
+      ? paiementsManquants(journal, serie3ans, b.devise, "spot")
+      : OBSERVATIONS_MINIMALES_MARGE;
+
   const margeIndecomposable =
     calibrees !== null && marge !== null && calibrees.virementMargePct === 0;
 
@@ -226,19 +240,14 @@ export function DetailPaiement({ id }: { id: string }) {
               {t.portefeuille.incomplet}
             </p>
           )}
-          {!marge && !hypotheses.personnalise && !margeIndecomposable && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t.paiement.vosChiffres.pourAffiner(
-                Math.max(
-                  1,
-                  3 -
-                    journal.filter(
-                      (p) => p.devise === b.devise && p.canal === "spot",
-                    ).length,
-                ),
-              )}
-            </p>
-          )}
+          {!marge &&
+            !hypotheses.personnalise &&
+            !margeIndecomposable &&
+            manquants > 0 && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t.paiement.vosChiffres.pourAffiner(manquants)}
+              </p>
+            )}
 
           <div id="vos-chiffres-detail">
             {!ouvertChiffres ? (

@@ -52,9 +52,11 @@ export const fr = {
     vosChiffres: "Vos chiffres",
     source: "Source",
     verifieLe: "Vérifié le",
-    // Rappelé partout où un chiffre de frais apparaît.
+    // Rappelé sous les paiements à venir. Ne couvre pas le portefeuille, dont
+    // les chiffres sont mesurés sur les paiements saisis : dire des deux qu'ils
+    // sont estimés effacerait la seule différence qui compte entre eux.
     fraisEstimes:
-      "Les frais affichés sont des estimations tirées d'ordres de grandeur publics, pas des devis de votre fournisseur.",
+      "Les frais des paiements à venir sont des estimations tirées d'ordres de grandeur publics, pas des devis de votre fournisseur.",
   },
 
   // Chaque terme financier employé à l'écran est défini ici, et l'interface
@@ -132,7 +134,7 @@ export const fr = {
       employe: "Employé",
       contractant: "Contractant",
       prochainPaiement: "Prochain paiement",
-      confirmerSuppression: (nom: string) => `Retirer ${nom} de la liste ?`,
+      confirmerSuppression: (nom: string) => `Retirer ${nom} de la liste ?`,
     },
 
     frequences: {
@@ -174,15 +176,28 @@ export const fr = {
     fraisAide:
       "Tout ce que la chaîne a prélevé : la marge cachée dans le taux, les frais fixes et les prélèvements des banques du trajet.",
     impact: "Effet du calendrier",
-    impactDetail: "par rapport au taux moyen de la période",
+    impactDetail:
+      "par rapport au taux moyen de la période — un « + » est un surcoût",
     impactAide:
       "Ce que la répartition de vos versements dans le temps a coûté ou rapporté, comparée au taux moyen disponible sur la période. C'est un constat sur le passé : personne ne peut savoir à l'avance quelle date sera la bonne.",
     incomplet:
       "Certains paiements n'ont pas de montant reçu. Leur coût réel est donc au moins celui affiché, jamais moins.",
-    ignores: (n: number) =>
-      n === 1
-        ? "1 paiement est écarté du calcul : la Banque centrale européenne ne publie pas sa devise."
-        : `${n} paiements sont écartés du calcul : la Banque centrale européenne ne publie pas leur devise.`,
+    horsPeriode:
+      "Tous vos paiements enregistrés sont antérieurs aux douze derniers mois, la période sur laquelle porte ce bilan. Saisissez un paiement plus récent et les chiffres apparaîtront.",
+    ecartes: {
+      deviseNonPubliee: (n: number) =>
+        n === 1
+          ? "1 paiement est écarté du calcul : la Banque centrale européenne ne publie pas sa devise."
+          : `${n} paiements sont écartés du calcul : la Banque centrale européenne ne publie pas leur devise.`,
+      sansCours: (n: number) =>
+        n === 1
+          ? "1 paiement est écarté du calcul : aucun cours n'est publié à sa date ni avant, elle précède l'historique disponible."
+          : `${n} paiements sont écartés du calcul : aucun cours n'est publié à leur date ni avant, elles précèdent l'historique disponible.`,
+      autreBase: (n: number, base: string) =>
+        n === 1
+          ? `1 paiement est écarté du calcul : il a été enregistré dans une autre devise de base que le ${base}, et deux devises de base ne s'additionnent pas.`
+          : `${n} paiements sont écartés du calcul : ils ont été enregistrés dans une autre devise de base que le ${base}, et deux devises de base ne s'additionnent pas.`,
+    },
     vide: {
       titre: "Rien à mesurer pour l'instant",
       corps:
@@ -196,7 +211,7 @@ export const fr = {
   journal: {
     titre: "Vos paiements passés",
     intro:
-      "Ce que vous avez réellement payé, comparé au taux de référence du jour même. C'est ici que se lit la réponse à « est-ce que j'ai économisé » : vos virements de janvier en face de ceux d'août.",
+      "Ce que vous avez réellement payé, comparé au taux de référence du jour même. C'est ici que se lit la réponse à « est-ce que j'ai économisé » : vos virements de janvier en face de ceux d'août.",
     vide: "Aucun paiement enregistré. Le premier suffit pour commencer à mesurer.",
     ajouter: "Ajouter un paiement",
     annuler: "Annuler",
@@ -398,12 +413,12 @@ export const fr = {
         our: "OUR — vous payez tout. Votre bénéficiaire reçoit le montant exact. Votre banque facture un supplément forfaitaire pour ce service.",
         ben: "BEN — le bénéficiaire assume l'ensemble des frais.",
         conclusion:
-          "C'est le levier le plus direct sur la partie des frais que l'on dit « impossible à connaître d'avance » : elle ne l'est pas si vous choisissez de la porter.",
+          "C'est le levier le plus direct sur la partie des frais que l'on dit « impossible à connaître d'avance » : elle ne l'est pas si vous choisissez de la porter.",
       },
     },
 
     crypto: {
-      titre: "Peut-on payer cette personne en cryptomonnaie ?",
+      titre: "Peut-on payer cette personne en cryptomonnaie ?",
       statut: {
         fiat_obligatoire: "Non, pas le salaire",
         permis_sous_conditions: "Oui, sous conditions",
@@ -432,7 +447,7 @@ export const fr = {
     vosChiffres: {
       titre: "Vos chiffres",
       mesure: (n: number, paire: string) =>
-        `Mesuré sur vos ${n} derniers paiements ${paire}.`,
+        `Écart médian mesuré sur vos ${n} paiements ${paire}.`,
       defaut:
         "Estimations, tant que vous n'avez pas saisi de paiements passés sur ce trajet.",
       indecomposable:
@@ -453,7 +468,7 @@ export const fr = {
         `${jours} jour${jours > 1 ? "s" : ""} d'attente, soit environ ${montant} d'incertitude sur ce paiement.`,
       expositionCourte: "Le paiement est dû aujourd'hui : aucune attente à chiffrer.",
       decalage: (prevue: string, reelle: string, jours: number) =>
-        `Le ${prevue} n'est pas un jour de virement. Le paiement partira le ${reelle}, soit ${jours} jour${jours > 1 ? "s" : ""} de plus que vous n'avez pas choisis.`,
+        `Le ${prevue} n'est pas un jour de virement. Le paiement partira le ${reelle}, soit ${jours} jour${jours > 1 ? "s" : ""} de plus que vous n'avez pas choisi${jours > 1 ? "s" : ""}.`,
       semaine: {
         titre: "Cette semaine du mois",
         agitee: (ratio: string) =>
@@ -514,7 +529,7 @@ export const fr = {
       titre: "Les taux de change",
       corps: [
         "Les taux viennent de l'API Frankfurter, qui redistribue les taux de référence publiés par la Banque centrale européenne. C'est une source publique, gratuite et vérifiable — vous pouvez interroger la même adresse que nous.",
-        "La BCE publie un seul cours par jour ouvrable, vers 16 h heure d'Europe centrale. Il n'y a ni fin de semaine ni jour férié dans la série. Un taux consulté un samedi est donc celui du vendredi, et RateGuard affiche toujours la date du cours plutôt que « maintenant ».",
+        "La BCE publie un seul cours par jour ouvrable, vers 16 h heure d'Europe centrale. Il n'y a ni fin de semaine ni jour férié dans la série. Un taux consulté un samedi est donc celui du vendredi, et RateGuard affiche toujours la date du cours plutôt que « maintenant ».",
         "Ce n'est pas un taux négociable : c'est une référence. Votre banque appliquera son propre taux, moins bon, au moment du virement. Les taux en direct sont vendus par des fournisseurs commerciaux ; nous avons préféré une source gratuite et transparente à une source payante et opaque.",
       ],
       devisesAbsentes:
@@ -527,7 +542,7 @@ export const fr = {
         "La volatilité est l'écart-type des variations quotidiennes du taux, calculé sur l'historique réel de la paire, puis annualisé en le multipliant par la racine de 252 — le nombre de séances dans une année.",
         "Les amplitudes affichées sont mesurées sur des fenêtres glissantes de la longueur exacte de votre cycle de paie. Si vous payez aux deux semaines, nous regardons toutes les périodes de deux semaines de l'historique et nous rapportons leur distribution.",
         "Ces fenêtres se chevauchent, ce qui corrèle les observations et resserre un peu les extrêmes. C'est un compromis assumé : sur un an d'historique, il n'y a que vingt-six quinzaines qui ne se chevauchent pas, ce qui est trop peu pour un percentile.",
-        "En dessous de vingt variations quotidiennes ou de dix fenêtres, aucune statistique n'est publiée. L'écran affiche « données insuffisantes ».",
+        "En dessous de vingt variations quotidiennes ou de dix fenêtres, aucune statistique n'est publiée. L'écran affiche « données insuffisantes ».",
       ],
     },
 
@@ -604,12 +619,12 @@ export const fr = {
         "Le caractère contraignant de la promesse ne fait pas consensus. Une partie des juristes considère qu'une promesse engage moralement mais pas juridiquement, et qu'en rendre l'exécution obligatoire revient à reconstituer le contrat à terme que l'on cherchait à éviter.",
         "D'autres estiment qu'une promesse peut être rendue contraignante lorsqu'un besoin réel existe et que l'autre partie a engagé des frais en s'y fiant — la situation d'une entreprise qui a déjà signé avec ses contractants.",
         "Une troisième critique, de fond, tient que ces montages reproduisent économiquement l'instrument conventionnel sous une autre forme, et que la conformité de forme ne suffit pas.",
-        "Aucune de ces positions n'est « la » position islamique. Elles coexistent, et le choix relève d'un avis que vous devez chercher auprès de votre propre conseiller, en lui décrivant votre situation précise.",
+        "Aucune de ces positions n'est « la » position islamique. Elles coexistent, et le choix relève d'un avis que vous devez chercher auprès de votre propre conseiller, en lui décrivant votre situation précise.",
       ],
     },
 
     cryptoFiqh: {
-      titre: "Et la crypto ?",
+      titre: "Et la crypto ?",
       corps: [
         "Le statut des cryptomonnaies fait lui aussi l'objet d'un débat savant ouvert : certains juristes y voient un bien échangeable, d'autres refusent de leur reconnaître la qualité de monnaie, d'autres encore distinguent selon l'adossement du jeton.",
         "RateGuard ne tranche pas plus ici qu'ailleurs. La section réglementaire de chaque personne dit ce que la loi du pays permet ; la question de la licéité religieuse est distincte et vous appartient.",

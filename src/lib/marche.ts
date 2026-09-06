@@ -43,6 +43,17 @@ const JOURS_HISTORIQUE = 1095;
 export const JOURS_STATISTIQUES = 365;
 
 /**
+ * Le premier jour d'une fenêtre de `jours` jours civils.
+ *
+ * Exporté parce que la page d'accueil doit découper le journal sur exactement
+ * la même borne que la série : deux bornes calculées séparément se décalent, et
+ * le bilan compare alors des paiements à une moyenne d'une autre période.
+ */
+export function debutFenetre(jours: number): string {
+  return new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
  * Les `jours` derniers jours civils d'une série.
  *
  * Les statistiques de la page détail décrivent le régime récent, le calendrier
@@ -51,9 +62,7 @@ export const JOURS_STATISTIQUES = 365;
  * porte sur une période qu'il ne couvre pas.
  */
 export function derniersJours(serie: SerieTaux, jours: number): SerieTaux {
-  const limite = new Date(Date.now() - jours * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const limite = debutFenetre(jours);
   const depart = serie.dates.findIndex((d) => d >= limite);
 
   // Aucune date n'atteint la limite : toute la série précède la fenêtre.

@@ -84,7 +84,9 @@ export function Comparateur({
                         type="button"
                         className="underline underline-offset-4"
                         aria-expanded={ouverte}
-                        aria-controls={`detail-${option.cle}`}
+                        aria-controls={
+                          ouverte ? `detail-${option.cle}` : undefined
+                        }
                         onClick={() => setDepliee(ouverte ? null : option.cle)}
                       >
                         {ouverte ? s.replier : s.deplier}

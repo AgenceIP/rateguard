@@ -120,7 +120,7 @@ export interface PaquetAmplitude {
  * finit par désigner du hasard. Si le produit devait porter cette mesure plus
  * loin, le chemin est un test de permutation sur les médianes.
  */
-const OBSERVATIONS_MINIMALES_PAQUET = 40;
+export const OBSERVATIONS_MINIMALES_PAQUET = 40;
 const RATIO_HAUT = 1.25;
 const RATIO_BAS = 0.8;
 

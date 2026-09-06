@@ -74,7 +74,13 @@ Fonctions pures, testables sans mock (n'importent ni React, ni réseau, ni `loca
   compare ce qui est sorti à ce qui est arrivé au taux de référence du jour ; `margeObservee`
   calibre les hypothèses de frais dès trois paiements sur le même trajet ; `resumerPortefeuille`
   agrège volume, frais et impact du calendrier par devise, en écartant plutôt qu'en devinant
-  les paiements sans taux — c'est ce résumé qu'affiche la page d'accueil (`src/app/page.tsx`).
+  les paiements qu'il ne sait pas mesurer — c'est ce résumé qu'affiche la page d'accueil
+  (`src/app/page.tsx`). Deux points s'y jouent : la fenêtre de reporting est **découpée par
+  l'appelant** (`debutFenetre(JOURS_STATISTIQUES)` sur le journal *et* sur les séries, sans
+  quoi douze mois de paiements se comparent à une moyenne triennale, ce qui mesure la dérive
+  de la devise et non le calendrier), et la devise de base est un **paramètre**, parce que
+  `montantEnvoye` est libellé dans celle du jour du paiement. `ecartes` sépare les trois
+  motifs d'exclusion : les confondre annonce à l'écran une cause qui n'est pas la bonne.
 - `src/lib/calendrier.ts` — jours fériés TARGET2, prochaine séance ouvrée, et
   `PaquetAmplitude` (semaine du mois, jour de semaine) : une amplitude relative, jamais un
   sens, derrière un garde-fou de significativité qui exige au moins 40 observations avant
@@ -86,10 +92,13 @@ Le reste :
   immédiatement (« au moins » tant que `montantRecu` manque), et calibration automatique des
   hypothèses de frais dès trois paiements sur le même trajet.
 - `src/lib/marche.ts` — couche de données client. `obtenirMarche` mémoïse une paire par
-  session et charge taux + série d'un an en parallèle ; un taux sans historique reste
-  utilisable. `useMarches` sert la page d'accueil.
+  session et charge taux + série de trois ans (`JOURS_HISTORIQUE = 1095`) en parallèle ; un
+  taux sans historique reste utilisable. `derniersJours` et `debutFenetre` ramènent cette
+  série à la fenêtre courte (`JOURS_STATISTIQUES = 365`) là où l'écran annonce douze mois —
+  les deux fenêtres coexistent volontairement. `useMarches` sert la page d'accueil.
 - `src/lib/stockage.ts` — Supabase si `NEXT_PUBLIC_SUPABASE_URL` et `…_ANON_KEY` existent,
-  sinon `localStorage` (`rateguard.profil.v2`, `rateguard.decisions.v2`). Aucun compte :
+  sinon `localStorage` (`rateguard.profil.v2`, `rateguard.decisions.v2`,
+  `rateguard.journal.v1`). Aucun compte :
   l'identifiant d'espace opaque `rateguard.espace.v1` part en en-tête `x-espace` et c'est
   sur lui que porte la RLS (`supabase/schema.sql`).
 - `src/data/crypto-paie.ts` — 13 fiches pays bilingues, chacune avec ses sources et
@@ -97,8 +106,9 @@ Le reste :
 - `src/data/pays.ts` — correspondance pays → devise et `DEVISES_NON_PUBLIEES`. Les noms
   affichés viennent d'`Intl.DisplayNames`, jamais d'une table écrite à la main.
 - `src/app/api/taux/route.ts` et `src/app/api/serie/route.ts` — proxys Frankfurter
-  (`api.frankfurter.dev/v1`), revalidation 1 h. Une devise non publiée renvoie 404 : c'est
-  attendu, on le remonte tel quel.
+  (`api.frankfurter.dev/v1`), revalidation 1 h pour le taux du jour, 6 h pour la série
+  (`revalidate = 21600` : l'historique ne bouge qu'une fois par jour). Une devise non
+  publiée renvoie 404 : c'est attendu, on le remonte tel quel.
 - `src/i18n/fr.ts` et `en.ts` — toute la copie, aucune chaîne visible en dur dans le JSX.
   `Traductions = typeof fr`, donc une clé oubliée dans `en.ts` casse la compilation.
   Trois règles de rédaction, énoncées en tête de `fr.ts` : tout terme financier est glosé
@@ -110,7 +120,7 @@ Le reste :
 
 ## Vérification
 
-`npm test` (Vitest, 93 tests sur `volatilite.ts`, `strategies.ts`, `journal.ts`,
+`npm test` (Vitest, 98 tests sur `volatilite.ts`, `strategies.ts`, `journal.ts`,
 `calendrier.ts` et `marche.ts`) puis `npm run build`.
 Toute fonction ajoutée à `volatilite.ts`, `strategies.ts`, `journal.ts` ou `calendrier.ts` a
 au moins un cas normal et un cas limite — le jury demande explicitement la couverture de

@@ -48,7 +48,7 @@ export const en: Traductions = {
     source: "Source",
     verifieLe: "Verified",
     fraisEstimes:
-      "The fees shown are estimates based on public orders of magnitude, not quotes from your provider.",
+      "Fees on upcoming payments are estimates based on public orders of magnitude, not quotes from your provider.",
   },
 
   lexique: {
@@ -165,15 +165,27 @@ export const en: Traductions = {
     fraisAide:
       "Everything the chain took: the margin hidden in the rate, the fixed fees, and the deductions made by banks along the way.",
     impact: "Timing effect",
-    impactDetail: "against the period's average rate",
+    impactDetail: "against the period's average rate — a '+' is an extra cost",
     impactAide:
       "What the spread of your payments over time cost or earned, compared with the average rate available during the period. It describes the past: nobody can know in advance which date will turn out well.",
     incomplet:
       "Some payments have no received amount. Their real cost is therefore at least the figure shown, never less.",
-    ignores: (n: number) =>
-      n === 1
-        ? "1 payment is left out of the calculation: the European Central Bank does not publish its currency."
-        : `${n} payments are left out of the calculation: the European Central Bank does not publish their currency.`,
+    horsPeriode:
+      "All your recorded payments predate the last 12 months, the period this summary covers. Enter a more recent payment and the figures will appear.",
+    ecartes: {
+      deviseNonPubliee: (n: number) =>
+        n === 1
+          ? "1 payment is left out of the calculation: the European Central Bank does not publish its currency."
+          : `${n} payments are left out of the calculation: the European Central Bank does not publish their currency.`,
+      sansCours: (n: number) =>
+        n === 1
+          ? "1 payment is left out of the calculation: no rate is published on or before its date, which predates the available history."
+          : `${n} payments are left out of the calculation: no rate is published on or before their dates, which predate the available history.`,
+      autreBase: (n: number, base: string) =>
+        n === 1
+          ? `1 payment is left out of the calculation: it was recorded in a base currency other than ${base}, and two base currencies do not add up.`
+          : `${n} payments are left out of the calculation: they were recorded in a base currency other than ${base}, and two base currencies do not add up.`,
+    },
     vide: {
       titre: "Nothing to measure yet",
       corps:
@@ -419,7 +431,7 @@ export const en: Traductions = {
     vosChiffres: {
       titre: "Your numbers",
       mesure: (n: number, paire: string) =>
-        `Measured on your last ${n} ${paire} payments.`,
+        `Median gap measured across your ${n} ${paire} payments.`,
       defaut:
         "Estimates, until you enter past payments along this route.",
       indecomposable:

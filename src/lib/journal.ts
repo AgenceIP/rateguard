@@ -167,12 +167,26 @@ export interface ResumePortefeuille {
   impactTaux: number;
   devises: LigneDevise[];
   /**
-   * Paiements écartés : soit aucune série ne couvre leur devise, soit aucun
-   * cours n'est publié à leur date ou avant. Dans les deux cas on préfère les
-   * retirer du total et le dire, plutôt que leur inventer un taux. Affiché,
-   * jamais masqué.
+   * Paiements écartés, par cause. Les trois se disent différemment à l'écran :
+   * les confondre revient à annoncer un motif qui n'est pas le bon — une devise
+   * accusée de ne pas être publiée alors que c'est la date qui sort de la série.
    */
+  ecartes: EcartsPortefeuille;
+  /** Somme des trois causes. */
   ignores: number;
+}
+
+export interface EcartsPortefeuille {
+  /**
+   * Enregistrés sous une autre devise de base. `montantEnvoye` est libellé dans
+   * la devise de base du jour du paiement : les additionner à celle d'aujourd'hui
+   * produirait un total sans unité, affiché sous le symbole de la mauvaise.
+   */
+  autreBase: number;
+  /** Aucune série ne couvre leur devise — la BCE ne la publie pas. */
+  deviseNonPubliee: number;
+  /** Série présente, mais aucun cours publié à leur date ni avant. */
+  sansCours: number;
 }
 
 /**
@@ -183,13 +197,22 @@ export interface ResumePortefeuille {
 export function resumerPortefeuille(
   paiements: PaiementPasse[],
   series: Record<string, SerieTaux>,
+  base: string,
 ): ResumePortefeuille {
   const parDevise = new Map<string, PaiementPasse[]>();
-  let ignores = 0;
+  const ecartes: EcartsPortefeuille = {
+    autreBase: 0,
+    deviseNonPubliee: 0,
+    sansCours: 0,
+  };
 
   for (const p of paiements) {
+    if (p.deviseBase !== base) {
+      ecartes.autreBase++;
+      continue;
+    }
     if (!series[p.devise]) {
-      ignores++;
+      ecartes.deviseNonPubliee++;
       continue;
     }
     const liste = parDevise.get(p.devise) ?? [];
@@ -208,7 +231,7 @@ export function resumerPortefeuille(
     for (const p of liste) {
       const taux = tauxAuPlusProche(serie, p.date);
       if (!taux) {
-        ignores++;
+        ecartes.sansCours++;
         continue;
       }
       const c = coutReel(p, taux);
@@ -242,12 +265,13 @@ export function resumerPortefeuille(
     fraisPct: volume > 0 ? (frais / volume) * 100 : 0,
     impactTaux: devises.reduce((a, d) => a + d.impactTaux, 0),
     devises,
-    ignores,
+    ecartes,
+    ignores: ecartes.autreBase + ecartes.deviseNonPubliee + ecartes.sansCours,
   };
 }
 
 /** Sous ce nombre d'observations, on garde les valeurs par défaut. */
-const OBSERVATIONS_MINIMALES_MARGE = 3;
+export const OBSERVATIONS_MINIMALES_MARGE = 3;
 
 function mediane(xs: number[]): number {
   if (xs.length === 0) return 0;
@@ -280,20 +304,49 @@ export function margeObservee(
   devise: string,
   canal: CanalPaiement,
 ): MargeObservee | null {
-  const ecarts: number[] = [];
-  let complet = true;
+  const retenus = calibrables(paiements, serie, devise, canal);
+  if (retenus.length < OBSERVATIONS_MINIMALES_MARGE) return null;
 
+  const couts = retenus.map(({ p, taux }) => coutReel(p, taux));
+  return {
+    pct: mediane(couts.map((c) => c.ecartPct)),
+    n: couts.length,
+    complet: couts.every((c) => c.complet),
+  };
+}
+
+/** Les paiements de ce trajet auxquels un cours de référence peut être attaché. */
+function calibrables(
+  paiements: PaiementPasse[],
+  serie: SerieTaux,
+  devise: string,
+  canal: CanalPaiement,
+): { p: PaiementPasse; taux: number }[] {
+  const retenus: { p: PaiementPasse; taux: number }[] = [];
   for (const p of paiements) {
     if (p.devise !== devise || p.canal !== canal) continue;
     const taux = tauxAuPlusProche(serie, p.date);
-    if (!taux) continue;
-    const c = coutReel(p, taux);
-    ecarts.push(c.ecartPct);
-    complet &&= c.complet;
+    if (taux) retenus.push({ p, taux });
   }
+  return retenus;
+}
 
-  if (ecarts.length < OBSERVATIONS_MINIMALES_MARGE) return null;
-  return { pct: mediane(ecarts), n: ecarts.length, complet };
+/**
+ * Combien de paiements manquent encore avant que la calibration se déclenche.
+ *
+ * `margeObservee` écarte sans bruit ceux dont la date précède la série. Compter
+ * les lignes du journal ferait donc promettre à l'écran une calibration qui
+ * n'arriverait jamais : cinq paiements trop anciens afficheraient « encore un
+ * paiement » indéfiniment. Zéro signifie que la mesure est déjà possible.
+ */
+export function paiementsManquants(
+  paiements: PaiementPasse[],
+  serie: SerieTaux,
+  devise: string,
+  canal: CanalPaiement,
+): number {
+  const utilisables = calibrables(paiements, serie, devise, canal).length;
+  return Math.max(0, OBSERVATIONS_MINIMALES_MARGE - utilisables);
 }
 
 /**

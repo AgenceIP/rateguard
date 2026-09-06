@@ -9,12 +9,18 @@ import { useT } from "@/i18n";
 import {
   aujourdhuiISO,
   formaterMontant,
+  formaterMontantSigne,
   formaterPourcentage,
   joursAvant,
   localeActive,
 } from "@/lib/format";
-import { resumerPortefeuille } from "@/lib/journal";
-import { useMarches } from "@/lib/marche";
+import { resumerPortefeuille, type EcartsPortefeuille } from "@/lib/journal";
+import {
+  debutFenetre,
+  derniersJours,
+  JOURS_STATISTIQUES,
+  useMarches,
+} from "@/lib/marche";
 import { resumerPaiement } from "@/lib/strategies";
 import {
   enregistrerProfil,
@@ -128,12 +134,19 @@ export default function Accueil() {
   const locale = localeActive();
   const base = profil.deviseBase;
 
+  // La fenêtre de reporting, des deux côtés à la fois. `resumerPortefeuille`
+  // laisse ce découpage à l'appelant (voir son contrat dans journal.ts) : la
+  // série brute couvre trois ans, et comparer douze mois de paiements à une
+  // moyenne triennale mesure la dérive de la devise, pas l'effet du calendrier.
+  // Sur une devise qui s'est dépréciée, le signe s'inverse.
+  const debutPeriode = debutFenetre(JOURS_STATISTIQUES);
+  const journalPeriode = (journal ?? []).filter((p) => p.date >= debutPeriode);
   const series = Object.fromEntries(
     Object.entries(marches)
       .filter(([, m]) => m.serie)
-      .map(([d, m]) => [d, m.serie!]),
+      .map(([d, m]) => [d, derniersJours(m.serie!, JOURS_STATISTIQUES)]),
   );
-  const portefeuille = resumerPortefeuille(journal ?? [], series);
+  const portefeuille = resumerPortefeuille(journalPeriode, series, base);
 
   // Le total mensuel n'a de sens que si toutes les devises ont un taux : on
   // n'additionne pas des montants dont une partie manque.
@@ -220,10 +233,16 @@ export default function Accueil() {
                 {t.portefeuille.vide.action}
               </Link>
             </div>
-          ) : portefeuille.n === 0 ? (
+          ) : journalPeriode.length === 0 ? (
             <p className="mt-4 max-w-3xl leading-relaxed text-muted-foreground">
-              {t.portefeuille.ignores(portefeuille.ignores)}
+              {t.portefeuille.horsPeriode}
             </p>
+          ) : portefeuille.n === 0 ? (
+            <Ecartes
+              ecartes={portefeuille.ecartes}
+              base={base}
+              classe="mt-4 max-w-3xl leading-relaxed text-muted-foreground"
+            />
           ) : (
             <>
               <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
@@ -246,7 +265,7 @@ export default function Accueil() {
                 />
                 <ChiffreCle
                   terme={t.portefeuille.impact}
-                  valeur={formaterMontant(portefeuille.impactTaux, base, 0)}
+                  valeur={formaterMontantSigne(portefeuille.impactTaux, base)}
                   detail={t.portefeuille.impactDetail}
                   aide={t.portefeuille.impactAide}
                 />
@@ -257,11 +276,11 @@ export default function Accueil() {
                   {t.portefeuille.incomplet}
                 </p>
               )}
-              {portefeuille.ignores > 0 && (
-                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                  {t.portefeuille.ignores(portefeuille.ignores)}
-                </p>
-              )}
+              <Ecartes
+                ecartes={portefeuille.ecartes}
+                base={base}
+                classe="mt-2 max-w-3xl text-sm text-muted-foreground"
+              />
 
               <h3 className="mt-8 font-heading text-lg font-semibold">
                 {t.portefeuille.parDevise}
@@ -431,6 +450,44 @@ export default function Accueil() {
       <p className="mt-12 max-w-3xl text-sm leading-relaxed text-muted-foreground">
         {t.commun.fraisEstimes}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Les paiements retirés du bilan, une ligne par cause.
+ *
+ * Trois motifs sans rapport entre eux : la BCE ne publie pas la devise, la date
+ * précède l'historique disponible, ou le paiement porte une autre devise de
+ * base. Les annoncer sous un motif unique en accuserait deux à tort.
+ */
+function Ecartes({
+  ecartes,
+  base,
+  classe,
+}: {
+  ecartes: EcartsPortefeuille;
+  base: string;
+  classe: string;
+}) {
+  const t = useT();
+  const lignes = [
+    ecartes.deviseNonPubliee > 0 &&
+      t.portefeuille.ecartes.deviseNonPubliee(ecartes.deviseNonPubliee),
+    ecartes.sansCours > 0 &&
+      t.portefeuille.ecartes.sansCours(ecartes.sansCours),
+    ecartes.autreBase > 0 &&
+      t.portefeuille.ecartes.autreBase(ecartes.autreBase, base),
+  ].filter((l): l is string => typeof l === "string");
+
+  if (lignes.length === 0) return null;
+  return (
+    <div className={classe}>
+      {lignes.map((l) => (
+        <p key={l} className="mt-2 first:mt-0">
+          {l}
+        </p>
+      ))}
     </div>
   );
 }

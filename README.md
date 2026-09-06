@@ -91,7 +91,7 @@ La page [D'où viennent les données](https://rateguard-eight.vercel.app/donnees
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 93 tests sur les fonctions pures
+npm test           # 98 tests sur les fonctions pures
 npm run build
 ```
 

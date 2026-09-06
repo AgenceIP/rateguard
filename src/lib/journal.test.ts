@@ -6,6 +6,7 @@ import {
   hypothesesCalibrees,
   impactDuTaux,
   margeObservee,
+  paiementsManquants,
   resumerPortefeuille,
   tauxAuPlusProche,
 } from "./journal";
@@ -155,7 +156,7 @@ describe("resumerPortefeuille", () => {
       paiement({ id: "a", date: "2026-08-04", montantRecu: 6150 }),
       paiement({ id: "b", date: "2026-08-14", montantRecu: 6150 }),
     ];
-    const r = resumerPortefeuille(paiements, { USD: SERIE });
+    const r = resumerPortefeuille(paiements, { USD: SERIE }, "CAD");
     expect(r.n).toBe(2);
     expect(r.volume).toBe(17800);
     expect(r.frais).toBeGreaterThan(0);
@@ -171,20 +172,42 @@ describe("resumerPortefeuille", () => {
       paiement({ id: "a", date: "2026-08-04", montantRecu: 6150 }),
       paiement({ id: "b", date: "2026-08-14" }),
     ];
-    const r = resumerPortefeuille(paiements, { USD: SERIE });
+    const r = resumerPortefeuille(paiements, { USD: SERIE }, "CAD");
     expect(r.devises[0].complet).toBe(false);
   });
 
   it("ignore une devise sans série plutôt que d'inventer un taux", () => {
     const paiements = [paiement({ id: "a", devise: "NGN" })];
-    const r = resumerPortefeuille(paiements, { USD: SERIE });
+    const r = resumerPortefeuille(paiements, { USD: SERIE }, "CAD");
     expect(r.n).toBe(0);
     expect(r.devises).toHaveLength(0);
     expect(r.ignores).toBe(1);
+    expect(r.ecartes.deviseNonPubliee).toBe(1);
+    expect(r.ecartes.autreBase).toBe(0);
+    expect(r.ecartes.sansCours).toBe(0);
+  });
+
+  it("écarte un paiement libellé dans une autre devise de base", () => {
+    const paiements = [
+      paiement({ id: "a", date: "2026-08-04", montantRecu: 6150 }),
+      paiement({ id: "b", deviseBase: "EUR", montantEnvoye: 10000 }),
+    ];
+    const r = resumerPortefeuille(paiements, { USD: SERIE }, "CAD");
+    expect(r.n).toBe(1);
+    expect(r.volume).toBe(8900);
+    expect(r.ecartes.autreBase).toBe(1);
+  });
+
+  it("distingue une date hors série d'une devise non publiée", () => {
+    const paiements = [paiement({ id: "a", date: "2020-01-01" })];
+    const r = resumerPortefeuille(paiements, { USD: SERIE }, "CAD");
+    expect(r.n).toBe(0);
+    expect(r.ecartes.sansCours).toBe(1);
+    expect(r.ecartes.deviseNonPubliee).toBe(0);
   });
 
   it("renvoie un résumé vide sans paiement", () => {
-    const r = resumerPortefeuille([], {});
+    const r = resumerPortefeuille([], {}, "CAD");
     expect(r.n).toBe(0);
     expect(r.volume).toBe(0);
     expect(r.devises).toHaveLength(0);
@@ -268,5 +291,29 @@ describe("hypothesesCalibrees", () => {
     expect(h.forwardPrimePct).toBe(HYPOTHESES_DEFAUT.forwardPrimePct);
     expect(h.multiDeviseMargePct).toBe(HYPOTHESES_DEFAUT.multiDeviseMargePct);
     expect(h.virementFixe).toBe(HYPOTHESES_DEFAUT.virementFixe);
+  });
+});
+
+describe("paiementsManquants", () => {
+  it("décompte les paiements qu'il reste à saisir", () => {
+    expect(paiementsManquants([], SERIE, "USD", "spot")).toBe(3);
+    const un = [paiement({ id: "a", date: "2026-08-04" })];
+    expect(paiementsManquants(un, SERIE, "USD", "spot")).toBe(2);
+  });
+
+  it("ne compte pas les paiements antérieurs à la série", () => {
+    const vieux = ["2020-01-01", "2020-02-01", "2020-03-01", "2020-04-01"].map(
+      (date, i) => paiement({ id: String(i), date }),
+    );
+    expect(margeObservee(vieux, SERIE, "USD", "spot")).toBeNull();
+    expect(paiementsManquants(vieux, SERIE, "USD", "spot")).toBe(3);
+  });
+
+  it("tombe à zéro dès que la mesure est possible", () => {
+    const trois = ["2026-08-04", "2026-08-05", "2026-08-06"].map((date, i) =>
+      paiement({ id: String(i), date, montantRecu: 6150 }),
+    );
+    expect(paiementsManquants(trois, SERIE, "USD", "spot")).toBe(0);
+    expect(margeObservee(trois, SERIE, "USD", "spot")).not.toBeNull();
   });
 });

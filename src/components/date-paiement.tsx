@@ -4,8 +4,14 @@ import { useT } from "@/i18n";
 import {
   amplitudeParSemaineDuMois,
   expositionEntre,
+  OBSERVATIONS_MINIMALES_PAQUET,
 } from "@/lib/calendrier";
-import { formaterDate, formaterMontant, formaterNombre } from "@/lib/format";
+import {
+  aujourdhuiISO,
+  formaterDate,
+  formaterMontant,
+  formaterNombre,
+} from "@/lib/format";
 import type { SerieTaux, StatsVolatilite } from "@/lib/types";
 
 /**
@@ -32,7 +38,7 @@ export function DatePaiement({
   base: string;
 }) {
   const t = useT();
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const aujourdhui = aujourdhuiISO();
   const exposition = expositionEntre(
     aujourdhui,
     datePaiement,
@@ -79,7 +85,7 @@ export function DatePaiement({
         {t.paiement.date.semaine.titre}
       </h3>
       <p className="mt-2 max-w-3xl leading-relaxed">
-        {!serie3ans || paquets.every((p) => p.n === 0)
+        {!serie3ans || (paquet?.n ?? 0) < OBSERVATIONS_MINIMALES_PAQUET
           ? t.paiement.date.semaine.insuffisant
           : !paquet?.distinct
             ? t.paiement.date.semaine.indistincte

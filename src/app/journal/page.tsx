@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n";
-import { formaterDate, formaterMontant, formaterPourcentage } from "@/lib/format";
+import {
+  aujourdhuiISO,
+  formaterDate,
+  formaterMontant,
+  formaterPourcentage,
+} from "@/lib/format";
 import { coutDeLAttente, coutReel, tauxAuPlusProche } from "@/lib/journal";
 import { useMarches } from "@/lib/marche";
 import {
@@ -161,7 +166,7 @@ function Formulaire({
 }) {
   const t = useT();
   const [nom, setNom] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(aujourdhuiISO());
   const [devise, setDevise] = useState("USD");
   const [envoye, setEnvoye] = useState("");
   const [voulu, setVoulu] = useState("");
@@ -213,6 +218,7 @@ function Formulaire({
             className="champ"
             type="date"
             value={date}
+            max={aujourdhuiISO()}
             onChange={(e) => setDate(e.target.value)}
             required
           />
@@ -329,14 +335,16 @@ function Champ({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
+    <div>
+      <label className="block">
+        <span className="text-sm font-medium">{label}</span>
+        {children}
+      </label>
       {aide && (
-        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           {aide}
-        </span>
+        </p>
       )}
-    </label>
+    </div>
   );
 }
