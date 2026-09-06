@@ -32,7 +32,46 @@ export interface Marche {
 /** Une paire n'est chargée qu'une fois par session, promesse partagée. */
 const cache = new Map<string, Promise<Marche>>();
 
-const JOURS_HISTORIQUE = 365;
+/**
+ * Trois ans. Le calendrier a besoin de ~150 observations par paquet de
+ * semaines pour que son garde-fou de significativité puisse conclure quoi que
+ * ce soit ; un an n'en donne que ~50. Un seul appel, deux usages.
+ */
+const JOURS_HISTORIQUE = 1095;
+
+/** Fenêtre courte pour les statistiques d'amplitude. */
+export const JOURS_STATISTIQUES = 365;
+
+/**
+ * Les `jours` derniers jours civils d'une série.
+ *
+ * Les statistiques de la page détail décrivent le régime récent, le calendrier
+ * a besoin de toute la profondeur. Les deux fenêtres coexistent et chaque
+ * écran affiche celle qu'il utilise — ne jamais laisser croire qu'un chiffre
+ * porte sur une période qu'il ne couvre pas.
+ */
+export function derniersJours(serie: SerieTaux, jours: number): SerieTaux {
+  const limite = new Date(Date.now() - jours * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const depart = serie.dates.findIndex((d) => d >= limite);
+
+  // Aucune date n'atteint la limite : toute la série précède la fenêtre.
+  // Renvoyer la série entière l'étiquetterait comme couvrant une période
+  // qu'elle ne couvre pas. On renvoie du vide, et en aval `suffisant` passe
+  // à false — les statistiques disparaissent au lieu d'être mal datées.
+  if (depart === -1) {
+    return { de: serie.de, vers: serie.vers, dates: [], valeurs: [] };
+  }
+  if (depart === 0) return serie;
+
+  return {
+    de: serie.de,
+    vers: serie.vers,
+    dates: serie.dates.slice(depart),
+    valeurs: serie.valeurs.slice(depart),
+  };
+}
 
 async function charger(de: string, vers: string): Promise<Marche> {
   if (de === vers) {
