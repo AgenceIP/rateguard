@@ -45,7 +45,7 @@ import {
   type StatsVolatilite,
   type StatutCrypto,
 } from "@/lib/types";
-import { calculerVolatilite } from "@/lib/volatilite";
+import { calculerVolatilite, coutAuTauxDuJour } from "@/lib/volatilite";
 
 const CLASSE_CHAMP =
   "h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
@@ -107,21 +107,46 @@ export function DetailPaiement({ id }: { id: string }) {
   // Fenêtre longue (trois ans) pour le calendrier, fenêtre courte (un an,
   // JOURS_STATISTIQUES) pour les statistiques d'amplitude de cette page :
   // les deux mesurent des choses différentes et ne doivent pas se mélanger.
+  // Invariant (pas de garde ici) : marche.serie n'est jamais non-null sans
+  // marche.taux — voir src/lib/marche.ts.
   const serie3ans = marche?.serie ?? null;
   const serieStats = serie3ans ? derniersJours(serie3ans, JOURS_STATISTIQUES) : null;
   const stats: StatsVolatilite | null = serieStats
     ? calculerVolatilite(serieStats, fenetre)
     : null;
 
-  // La marge mesurée sur les paiements passés de l'utilisateur remplace,
-  // quand elle existe, la marge estimée par défaut — voir hypothesesCalibrees.
+  // La marge mesurée sur les paiements passés remplace la marge estimée par
+  // défaut — mais jamais une valeur que l'utilisateur a saisie lui-même : un
+  // champ de formulaire qu'on écrase en silence n'est plus une commande.
   const marge =
-    serie3ans && marche?.taux
+    !profil.hypotheses.personnalise && serie3ans && marche?.taux
       ? margeObservee(journal, serie3ans, b.devise, "spot")
       : null;
-  const hypotheses =
+
+  // `hypothesesCalibrees` pose `personnalise: true`, ce qui vaut ailleurs
+  // « l'utilisateur a saisi ses frais » et supprime la fourchette
+  // d'incertitude (strategies.ts:37-39). Or elle ne mesure qu'un chiffre sur
+  // neuf : on garde la marge et on rend le drapeau à sa valeur d'origine,
+  // sinon la fourchette tombe sur huit frais jamais mesurés.
+  const calibrees =
     marge && marche?.taux
-      ? hypothesesCalibrees(profil.hypotheses, marge, b.montant / marche.taux)
+      ? hypothesesCalibrees(
+          profil.hypotheses,
+          marge,
+          coutAuTauxDuJour(b.montant, marche.taux),
+        )
+      : null;
+
+  // La part des frais fixes peut dépasser l'écart total observé : la
+  // soustraction de hypothesesCalibrees passe alors sous zéro et son
+  // `Math.max(0, …)` renvoie 0. Ce zéro est un artefact de bornage, pas une
+  // mesure — on refuse de le présenter comme telle. Voir correctif 4.
+  const margeIndecomposable =
+    calibrees !== null && marge !== null && calibrees.virementMargePct === 0;
+
+  const hypotheses =
+    calibrees && !margeIndecomposable
+      ? { ...calibrees, personnalise: profil.hypotheses.personnalise }
       : profil.hypotheses;
 
   const strategies: CoutStrategie[] =
@@ -188,121 +213,130 @@ export function DetailPaiement({ id }: { id: string }) {
             {t.paiement.vosChiffres.titre}
           </h2>
           <p className="mt-3 text-sm font-medium">
-            {marge
-              ? t.paiement.vosChiffres.mesure(marge.n, `${base} → ${b.devise}`)
-              : hypotheses.personnalise
-                ? t.paiement.hypotheses.personnalise
-                : t.paiement.vosChiffres.defaut}
+            {profil.hypotheses.personnalise
+              ? t.paiement.hypotheses.personnalise
+              : margeIndecomposable
+                ? t.paiement.vosChiffres.indecomposable
+                : marge
+                  ? t.paiement.vosChiffres.mesure(marge.n, `${base} → ${b.devise}`)
+                  : t.paiement.vosChiffres.defaut}
           </p>
-          {!marge && !hypotheses.personnalise && (
+          {marge && !marge.complet && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t.portefeuille.incomplet}
+            </p>
+          )}
+          {!marge && !hypotheses.personnalise && !margeIndecomposable && (
             <p className="mt-1 text-sm text-muted-foreground">
               {t.paiement.vosChiffres.pourAffiner(
-                3 -
-                  journal.filter(
-                    (p) => p.devise === b.devise && p.canal === "spot",
-                  ).length,
+                Math.max(
+                  1,
+                  3 -
+                    journal.filter(
+                      (p) => p.devise === b.devise && p.canal === "spot",
+                    ).length,
+                ),
               )}
             </p>
           )}
 
-          {!ouvertChiffres ? (
-            <>
-              <dl className="mt-4 max-w-xs space-y-2 text-sm">
-                <div className="flex justify-between gap-6">
-                  <dt className="text-muted-foreground">
-                    {t.paiement.vosChiffres.marge}
-                  </dt>
-                  <dd className="chiffres">
-                    {formaterPourcentage(hypotheses.virementMargePct, 1)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <dt className="text-muted-foreground">
-                    {t.paiement.vosChiffres.fraisFixes}
-                  </dt>
-                  <dd className="chiffres">
-                    {formaterMontant(
-                      hypotheses.virementFixe +
-                        hypotheses.virementIntermediaire +
-                        hypotheses.virementReception,
-                      base,
-                      0,
-                    )}
-                  </dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                onClick={() => setOuvertChiffres(true)}
-                aria-expanded={false}
-                className="mt-4 text-sm text-primary underline-offset-4 hover:underline"
-              >
-                {t.paiement.vosChiffres.ajuster}
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-                {t.paiement.hypotheses.intro}
-              </p>
+          <div id="vos-chiffres-detail">
+            {!ouvertChiffres ? (
+              <>
+                <dl className="mt-4 max-w-xs space-y-2 text-sm">
+                  <div className="flex justify-between gap-6">
+                    <dt className="text-muted-foreground">
+                      {t.paiement.vosChiffres.marge}
+                    </dt>
+                    <dd className="chiffres">
+                      {formaterPourcentage(hypotheses.virementMargePct, 1)}
+                    </dd>
+                  </div>
+                  {profil.hypotheses.personnalise && (
+                    <div className="flex justify-between gap-6">
+                      <dt className="text-muted-foreground">
+                        {t.paiement.vosChiffres.fraisFixes}
+                      </dt>
+                      <dd className="chiffres">
+                        {formaterMontant(
+                          hypotheses.virementFixe +
+                            hypotheses.virementIntermediaire +
+                            hypotheses.virementReception,
+                          base,
+                          0,
+                        )}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+                  {t.paiement.hypotheses.intro}
+                </p>
 
-              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {(
-                  [
-                    "virementFixe",
-                    "virementIntermediaire",
-                    "virementReception",
-                    "virementMargePct",
-                    "specialisteMargePct",
-                    "specialisteFixe",
-                    "forwardPrimePct",
-                    "multiDeviseMargePct",
-                    "multiDeviseMensuel",
-                  ] as const
-                ).map((champ) => (
-                  <label key={champ} className="text-sm">
-                    <span className="block text-muted-foreground">
-                      {t.paiement.hypotheses[champ]}
-                    </span>
-                    <input
-                      inputMode="decimal"
-                      value={String(profil.hypotheses[champ])}
-                      onChange={(e) =>
-                        majHypotheses(champ, Number(e.target.value) || 0)
-                      }
-                      className={`${CLASSE_CHAMP} chiffres mt-1`}
-                    />
-                  </label>
-                ))}
-              </div>
+                <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {(
+                    [
+                      "virementFixe",
+                      "virementIntermediaire",
+                      "virementReception",
+                      "virementMargePct",
+                      "specialisteMargePct",
+                      "specialisteFixe",
+                      "forwardPrimePct",
+                      "multiDeviseMargePct",
+                      "multiDeviseMensuel",
+                    ] as const
+                  ).map((champ) => (
+                    <label key={champ} className="text-sm">
+                      <span className="block text-muted-foreground">
+                        {t.paiement.hypotheses[champ]}
+                      </span>
+                      <input
+                        inputMode="decimal"
+                        value={String(profil.hypotheses[champ])}
+                        onChange={(e) =>
+                          majHypotheses(champ, Number(e.target.value) || 0)
+                        }
+                        className={`${CLASSE_CHAMP} chiffres mt-1`}
+                      />
+                    </label>
+                  ))}
+                </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                {profil.hypotheses.personnalise && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const suivant: Profil = {
-                        ...profil,
-                        hypotheses: { ...profil.hypotheses, personnalise: false },
-                      };
-                      setProfil(suivant);
-                      void enregistrerProfil(suivant);
-                    }}
-                  >
-                    {t.paiement.hypotheses.reinitialiser}
-                  </Button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setOuvertChiffres(false)}
-                  aria-expanded={true}
-                  className="text-sm text-primary underline-offset-4 hover:underline"
-                >
-                  {t.paiement.vosChiffres.fermer}
-                </button>
-              </div>
-            </>
-          )}
+                <div className="mt-6 flex flex-wrap items-center gap-4">
+                  {profil.hypotheses.personnalise && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        const suivant: Profil = {
+                          ...profil,
+                          hypotheses: { ...profil.hypotheses, personnalise: false },
+                        };
+                        setProfil(suivant);
+                        void enregistrerProfil(suivant);
+                      }}
+                    >
+                      {t.paiement.hypotheses.reinitialiser}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOuvertChiffres(!ouvertChiffres)}
+            aria-expanded={ouvertChiffres}
+            aria-controls="vos-chiffres-detail"
+            className="mt-4 text-sm text-primary underline-offset-4 hover:underline"
+          >
+            {ouvertChiffres
+              ? t.paiement.vosChiffres.fermer
+              : t.paiement.vosChiffres.ajuster}
+          </button>
         </section>
 
         {/* Le résumé est l'objet central de la page : c'est la seule surface ornée. */}
@@ -609,14 +643,14 @@ export function DetailPaiement({ id }: { id: string }) {
           <dl className="registre sticky top-8 border-y border-border text-sm">
             <div className="flex items-baseline justify-between gap-4 py-3">
               <dt className="text-muted-foreground">
-                {t.paiement.taux.dateTaux}
-                {t.commun.deuxPoints}
+                {t.paiement.taux.dateTaux} {formaterDate(marche.dateTaux)}
               </dt>
               <dd className="chiffres text-right">
-                {formaterTaux(marche.taux)} {b.devise}
-                <span className="block text-xs font-normal text-muted-foreground">
-                  {formaterDate(marche.dateTaux)}
-                </span>
+                {t.paiement.taux.valeur(
+                  base,
+                  formaterTaux(marche.taux),
+                  b.devise,
+                )}
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4 py-3">

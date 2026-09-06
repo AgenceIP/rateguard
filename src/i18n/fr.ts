@@ -437,6 +437,8 @@ export const fr = {
         `Mesuré sur vos ${n} derniers paiements ${paire}.`,
       defaut:
         "Estimations, tant que vous n'avez pas saisi de paiements passés sur ce trajet.",
+      indecomposable:
+        "Vos paiements sur ce trajet sont bien enregistrés, mais sur des montants de cette taille les frais fixes estimés dépassent déjà l'écart total observé, et la marge cachée dans le taux ne peut pas en être séparée. Entrez vos frais réels ci-dessous pour la faire apparaître.",
       pourAffiner: (manquants: number) =>
         manquants === 1
           ? "Encore 1 paiement enregistré sur ce trajet et ces chiffres deviendront des mesures."

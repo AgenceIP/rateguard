@@ -424,6 +424,8 @@ export const en: Traductions = {
         `Measured on your last ${n} ${paire} payments.`,
       defaut:
         "Estimates, until you enter past payments along this route.",
+      indecomposable:
+        "Your payments on this route are recorded, but at amounts this size the estimated fixed fees already exceed the total gap observed, so the margin hidden in the rate cannot be separated out. Enter your real fees below to reveal it.",
       pourAffiner: (manquants: number) =>
         manquants === 1
           ? "One more payment recorded along this route and these figures become measurements."
