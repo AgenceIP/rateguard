@@ -42,6 +42,11 @@ Interface bilingue français / anglais, le français est la forme de référence
 6. **Crypto : jamais d'avis juridique.** Chaque fiche pays porte ses sources datées et se
    termine par le renvoi vers un comptable ou un avocat local. Un pays absent du corpus
    reçoit `statut: "non_verifie"`, pas une valeur optimiste par défaut.
+7. **Le calendrier mesure des amplitudes, jamais une saisonnalité directionnelle.**
+   `PaquetAmplitude` (`src/lib/calendrier.ts`) ne porte que des valeurs absolues —
+   `medianePct`, `ratio` — et un `distinct` volontairement conservateur (au moins 40
+   observations, ratio ≥ 1,25 ou ≤ 0,8) : une carte du type « le CAD est plus fort en
+   semaine 32 » serait la ligne rouge n° 1 déguisée en statistique de calendrier.
 
 Hors périmètre : authentification, intégration bancaire réelle, exécution d'un transfert,
 recommandation d'un moment pour convertir.
@@ -65,9 +70,21 @@ Fonctions pures, testables sans mock (n'importent ni React, ni réseau, ni `loca
 - `src/lib/types.ts` — le vocabulaire commun ; `JOURS_PAR_FREQUENCE` fait le lien entre le
   rythme de paie de l'utilisateur et la fenêtre sur laquelle les statistiques sont mesurées.
 - `src/lib/format.ts` — le seul endroit où l'on arrondit, et le seul qui connaît la locale.
+- `src/lib/journal.ts` — coût réel d'un paiement passé et vue de portefeuille. `coutReel`
+  compare ce qui est sorti à ce qui est arrivé au taux de référence du jour ; `margeObservee`
+  calibre les hypothèses de frais dès trois paiements sur le même trajet ; `resumerPortefeuille`
+  agrège volume, frais et impact du calendrier par devise, en écartant plutôt qu'en devinant
+  les paiements sans taux — c'est ce résumé qu'affiche la page d'accueil (`src/app/page.tsx`).
+- `src/lib/calendrier.ts` — jours fériés TARGET2, prochaine séance ouvrée, et
+  `PaquetAmplitude` (semaine du mois, jour de semaine) : une amplitude relative, jamais un
+  sens, derrière un garde-fou de significativité qui exige au moins 40 observations avant
+  de désigner une période comme atypique.
 
 Le reste :
 
+- `src/app/journal/page.tsx` — le journal : saisie d'un paiement passé, écart réel affiché
+  immédiatement (« au moins » tant que `montantRecu` manque), et calibration automatique des
+  hypothèses de frais dès trois paiements sur le même trajet.
 - `src/lib/marche.ts` — couche de données client. `obtenirMarche` mémoïse une paire par
   session et charge taux + série d'un an en parallèle ; un taux sans historique reste
   utilisable. `useMarches` sert la page d'accueil.
@@ -93,9 +110,11 @@ Le reste :
 
 ## Vérification
 
-`npm test` (Vitest, 45 tests sur `volatilite.ts` et `strategies.ts`) puis `npm run build`.
-Toute fonction ajoutée à `volatilite.ts` ou `strategies.ts` a au moins un cas normal et un
-cas limite — le jury demande explicitement la couverture de tests.
+`npm test` (Vitest, 93 tests sur `volatilite.ts`, `strategies.ts`, `journal.ts`,
+`calendrier.ts` et `marche.ts`) puis `npm run build`.
+Toute fonction ajoutée à `volatilite.ts`, `strategies.ts`, `journal.ts`, `calendrier.ts` ou
+`marche.ts` a au moins un cas normal et un cas limite — le jury demande explicitement la
+couverture de tests.
 
 Ce que le build ne voit pas se vérifie en pilotant l'application : les quatre derniers bugs
 de copie française (préposition en double, deux-points anglais, fourchette mal composée)

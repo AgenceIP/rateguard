@@ -60,6 +60,13 @@ connaître » ne l'est pas si vous choisissez de la porter.
 **Garder une trace.** Chaque décision retenue fige le taux et sa date. Des semaines plus
 tard, vous pouvez expliquer votre choix avec ce que vous saviez ce jour-là.
 
+**Mesurer ce qui s'est vraiment passé.** Le journal (`/journal`) compare, paiement par
+paiement, ce que vous avez envoyé à ce que votre bénéficiaire a reçu, au taux de référence
+du jour — l'écart réel, pas une estimation. Dès trois paiements enregistrés sur le même
+trajet, RateGuard remplace les frais par défaut par la marge médiane que vous payez
+vraiment, et l'affiche comme telle (« Mesuré sur vos 3 derniers paiements ») plutôt qu'en
+silence.
+
 ## Données
 
 - **Taux** : références de la Banque centrale européenne via
@@ -83,7 +90,7 @@ La page [D'où viennent les données](https://rateguard-eight.vercel.app/donnees
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 45 tests sur les fonctions pures
+npm test           # 93 tests sur les fonctions pures
 npm run build
 ```
 
@@ -96,8 +103,9 @@ NEXT_PUBLIC_SUPABASE_URL=…
 NEXT_PUBLIC_SUPABASE_ANON_KEY=…
 ```
 
-`src/lib/volatilite.ts` et `src/lib/strategies.ts` ne dépendent ni de React, ni du réseau, ni
-du navigateur : toute la logique financière est testable sans aucun mock. Le texte visible vit
+`src/lib/volatilite.ts`, `src/lib/strategies.ts`, `src/lib/journal.ts` et `src/lib/calendrier.ts`
+ne dépendent ni de React, ni du réseau, ni du navigateur : toute la logique financière est
+testable sans aucun mock. Le texte visible vit
 dans `src/i18n/` — `fr.ts` est la forme de référence et `en.ts` doit la satisfaire, donc une
 traduction oubliée ne compile pas.
 
