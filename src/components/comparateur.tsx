@@ -57,17 +57,19 @@ export function Comparateur({
                       {texte.court}
                     </span>
                     {option.cle === moinsChere && (
-                      <span className="mt-1 block text-xs font-normal text-primary">
+                      <span className="mt-1 block text-xs font-medium">
                         {s.moinsChere}
                       </span>
                     )}
                   </th>
                   <td className="py-4 text-right">
                     <span className="chiffres">
-                      {formaterMontant(option.coutCentral, base, 0)}
+                      {option.certain
+                        ? formaterMontant(option.coutCentral, base, 0)
+                        : s.central(formaterMontant(option.coutCentral, base, 0))}
                     </span>
                     {!option.certain && (
-                      <span className="chiffres block text-xs text-muted-foreground">
+                      <span className="chiffres block text-xs">
                         {s.plage(
                           formaterMontant(option.coutPlancher, base, 0),
                           formaterMontant(option.coutPlafond, base, 0),
@@ -81,6 +83,7 @@ export function Comparateur({
                       type="button"
                       className="mt-1 block w-full text-right text-xs underline underline-offset-4"
                       aria-expanded={ouverte}
+                      aria-controls={`detail-${option.cle}`}
                       onClick={() => setDepliee(ouverte ? null : option.cle)}
                     >
                       {ouverte ? s.replier : s.deplier}
@@ -89,7 +92,7 @@ export function Comparateur({
                 </tr>
 
                 {ouverte && (
-                  <tr className="border-b border-border">
+                  <tr id={`detail-${option.cle}`} className="border-b border-border">
                     <td colSpan={3} className="py-4">
                       <p className="max-w-2xl leading-relaxed">
                         {texte.explication}
