@@ -63,9 +63,10 @@ tard, vous pouvez expliquer votre choix avec ce que vous saviez ce jour-là.
 **Mesurer ce qui s'est vraiment passé.** Le journal (`/journal`) compare, paiement par
 paiement, ce que vous avez envoyé à ce que votre bénéficiaire a reçu, au taux de référence
 du jour — l'écart réel, pas une estimation. Dès trois paiements enregistrés sur le même
-trajet, RateGuard remplace les frais par défaut par la marge médiane que vous payez
-vraiment, et l'affiche comme telle (« Mesuré sur vos 3 derniers paiements ») plutôt qu'en
-silence.
+trajet, RateGuard remplace la marge estimée par celle que vous payez vraiment, et l'affiche
+comme telle (« Mesuré sur vos 3 derniers paiements ») plutôt qu'en silence. Les huit autres
+frais restent des estimations affichées en fourchette, et vos propres chiffres, si vous les
+saisissez, priment toujours sur la mesure.
 
 ## Données
 

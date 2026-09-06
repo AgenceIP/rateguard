@@ -112,9 +112,11 @@ Le reste :
 
 `npm test` (Vitest, 93 tests sur `volatilite.ts`, `strategies.ts`, `journal.ts`,
 `calendrier.ts` et `marche.ts`) puis `npm run build`.
-Toute fonction ajoutée à `volatilite.ts`, `strategies.ts`, `journal.ts`, `calendrier.ts` ou
-`marche.ts` a au moins un cas normal et un cas limite — le jury demande explicitement la
-couverture de tests.
+Toute fonction ajoutée à `volatilite.ts`, `strategies.ts`, `journal.ts` ou `calendrier.ts` a
+au moins un cas normal et un cas limite — le jury demande explicitement la couverture de
+tests. `marche.ts` n'est pas un module pur : seule sa partie calculatoire, `derniersJours`,
+est testée ; `obtenirMarche` et `useMarches` touchent au réseau et à React, et leur imposer
+la même règle demanderait les mocks que le reste de cette architecture évite.
 
 Ce que le build ne voit pas se vérifie en pilotant l'application : les quatre derniers bugs
 de copie française (préposition en double, deux-points anglais, fourchette mal composée)
