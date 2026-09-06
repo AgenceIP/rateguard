@@ -94,7 +94,8 @@ export function formaterPourcentage(valeur: number, decimales = 1): string {
 
 /** Un nombre nu, sans devise ni pourcentage. Sert aux ratios du calendrier. */
 export function formaterNombre(valeur: number, decimales = 1): string {
-  return new Intl.NumberFormat(localeActive(), {
+  if (!Number.isFinite(valeur)) return "—";
+  return nombre(`n${decimales}`, {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   }).format(valeur);
