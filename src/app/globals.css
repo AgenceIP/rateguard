@@ -124,3 +124,9 @@
 .registre > * + * {
   border-top: 1px solid var(--border);
 }
+
+/* Un champ de saisie : filet bas seulement, comme le reste des registres. */
+.champ {
+  @apply mt-1 w-full border-b border-border bg-transparent py-1.5 text-sm
+         outline-none focus-visible:border-primary;
+}
